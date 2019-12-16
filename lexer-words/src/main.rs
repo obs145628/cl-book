@@ -14,8 +14,17 @@ fn main() {
     }
 
     let mut t = Trie::new();
-    t.add_word("hello");
-    t.add_word("pop");
-    t.add_word("heli");
-    t.add_word("hel");
+    t.add_word("abc");
+    t.add_word("dg");
+    t.prepare();
+
+    t.state_reset();
+    t.state_consume('a');
+    println!("a: word={}, inTrie={}", t.state_is_word(), t.state_in_trie());
+    t.state_consume('b');
+    println!("ab: word={}, inTrie={}", t.state_is_word(), t.state_in_trie());
+    t.state_consume('c');
+    println!("abc: word={}, inTrie={}", t.state_is_word(), t.state_in_trie());
+    t.state_consume('d');
+    println!("abcd: word={}, inTrie={}", t.state_is_word(), t.state_in_trie());
 }
