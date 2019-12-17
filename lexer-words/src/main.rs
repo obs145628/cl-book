@@ -1,16 +1,21 @@
 
 mod stream;
 mod trie;
+mod token;
+mod lexer;
 use stream::Stream;
 use trie::Trie;
+use lexer::Lexer;
 
 fn main() {
 
-    let mut is = Stream::new("ex/p1.txt");
-
-    while !is.eof() {
-	println!("[{}]", is.get_char());
-	is.next_char();
+    let mut lex = Lexer::new_from_file("ex/p1.txt");
+    loop {
+	let tok = lex.get();
+	println!("{:?}", tok);
+	if tok.is_eof() {
+	    break
+	}
     }
 
     let mut t = Trie::new();

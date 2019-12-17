@@ -140,7 +140,7 @@ impl TrieNode
 
 	    Some(c) => {
 		let child = self.get_child(c);
-		let rest = &w[1..];
+		let rest = &w[c.len_utf8()..];
 		child.add_word(rest);
 	    }
 	}
