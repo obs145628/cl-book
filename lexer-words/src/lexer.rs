@@ -1,26 +1,27 @@
 
 use crate::stream::Stream;
 use crate::token::Token;
+use crate::trie::Trie;
+use std::collections::HashSet;
 
 pub struct Lexer
 {
     is: Stream,
     tok: Option<Token>,
+    kws_set: HashSet<&'static str>,
+    syms_trie: Trie,
 }
 
 impl Lexer {
 
-    pub fn new(is: Stream) -> Lexer {
+    pub fn new(is: Stream, kws: Vec<&'static str>, syms: Vec<&str>) -> Lexer {
 	Lexer {
 	    is,
 	    tok: None,
+	    kws_set: kws.into_iter().collect(),
+	    syms_trie: Trie::from_words(syms),
 	}
     }
-
-    pub fn new_from_file(path: &str) -> Lexer {
-	Lexer::new(Stream::new(path))
-    }
-    
 
     pub fn peek(&mut self) -> Token {
 	self.get_last()
@@ -36,7 +37,7 @@ impl Lexer {
 
 	match &self.tok {
 	    None => {
-		let res = Lexer::parse_token(&mut self.is);
+		let res = self.parse_token();
 		self.tok = Some(res.clone());
 		res
 	    },
@@ -64,47 +65,69 @@ impl Lexer {
 	c.is_numeric() || c == '.'
     }
 
-    fn parse_token(is: &mut Stream) -> Token {
+    fn parse_token(&mut self) -> Token {
 
 	loop {
-	    if is.eof() {
+	    if self.is.eof() {
 		return Token::EOF
 	    };
 
-	    let c = is.get_char();
+	    let c = self.is.get_char();
 	    if !c.is_whitespace() {
 		break;
 	    }
-	    is.next_char();
+	    self.is.next_char();
 	}
 	
-	let c = is.get_char();
+	let c = self.is.get_char();
 	if Lexer::char_is_id_start(c) {
-	    Lexer::parse_token_id(is)
+	    self.parse_token_id()
 	}
 	else if Lexer::char_isnumber(c) {
-	    Lexer::parse_token_num(is)
+	    self.parse_token_num()
 	}
 	else if c == '"' {
-	    Lexer::parse_token_str(is)
+	    self.parse_token_str()
+	}
+	else if self.syms_trie.can_start_with(c) {
+	    self.parse_token_sym()
 	}
 	else {
-	    Lexer::parse_token_sym(is)
+	    panic!("Invalid char: '{}'", c);
 	}
     }
 
-    fn parse_token_id(is: &mut Stream) -> Token {
-	Token::EOF
+    fn parse_token_id(&mut self) -> Token {
+	let mut name = String::new();
+	loop {
+
+	    let c = self.is.get_char();
+	    if !Lexer::char_is_id(c) {
+		break;
+	    }
+	    self.is.next_char();
+	    name.push(c);
+	}
+
+	if name.len() == 0 {
+	    panic!("Empty string");
+	}
+
+	if self.kws_set.contains(&name[..]) {
+	    return Token::Keyword(name);
+	}
+
+	Token::Id(name)
     }
 
-    fn parse_token_num(is: &mut Stream) -> Token {
+    fn parse_token_num(&mut self) -> Token {
 
 	let mut val = String::new();
 	let mut dec = false;
 
 	loop {
 
-	    let c = is.get_char();
+	    let c = self.is.get_char();
 	    if c.is_numeric() {
 		
 	    }
@@ -118,7 +141,7 @@ impl Lexer {
 		break;
 	    }
 
-	    is.next_char();
+	    self.is.next_char();
 	    val.push(c);
 	}
 
@@ -136,16 +159,41 @@ impl Lexer {
 	}
     }
 
-    fn parse_token_str(is: &mut Stream) -> Token {
-	Token::EOF
+    fn parse_token_str(&mut self) -> Token {
+	if self.is.get_char() != '"' {
+	    panic!("Exptected '\"'");
+	}
+	self.is.next_char();
+
+	let mut str = String::new();
+
+	loop {
+	    if self.is.eof() {
+		panic!("End of file in string");
+	    }
+	    let c = self.is.get_char();
+	    self.is.next_char();
+
+	    if c == '\n' {
+		panic!("Newline in string");
+	    }
+	    if c == '"' {
+		break;
+	    }
+
+	    str.push(c);
+	}
+	
+	
+	Token::ValString(str)
     }
 
-    fn parse_token_sym(is: &mut Stream) -> Token {
-	let c = is.get_char();
+    fn parse_token_sym(&mut self) -> Token {
+	let c = self.is.get_char();
 	let mut val = String::new();
 	val.push(c);
 	let res = Token::Symbol(val);
-	is.next_char();
+	self.is.next_char();
 	res
     }
 }

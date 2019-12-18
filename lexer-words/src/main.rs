@@ -9,7 +9,9 @@ use lexer::Lexer;
 
 fn main() {
 
-    let mut lex = Lexer::new_from_file("ex/p1.txt");
+    let keywords = vec!["for"];
+    let syms = vec!["+", "-", "*", "/"];
+    let mut lex = Lexer::new(Stream::new("ex/p1.txt"), keywords, syms);
     loop {
 	let tok = lex.get();
 	println!("{:?}", tok);
