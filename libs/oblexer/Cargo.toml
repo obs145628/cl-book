@@ -1,5 +1,5 @@
 [package]
-name = "lexer-words"
+name = "oblexer"
 version = "0.1.0"
 authors = ["Steven Lariau <obs145628@gmail.com>"]
 edition = "2018"

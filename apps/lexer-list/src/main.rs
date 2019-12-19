@@ -1,17 +1,17 @@
 
-mod stream;
-mod trie;
-mod token;
-mod lexer;
-use stream::Stream;
-use trie::Trie;
-use lexer::Lexer;
+use oblexer::stream::Stream;
+use oblexer::trie::Trie;
+use oblexer::lexer::Lexer;
+
+//use stream::Stream;
+//use trie::Trie;
+//use lexer::Lexer;
 
 fn main() {
 
     let keywords = vec!["for"];
     let syms = vec!["+", "-", "*", "/"];
-    let mut lex = Lexer::new(Stream::new("ex/p1.txt"), keywords, syms);
+    let mut lex = Lexer::new(Stream::new("examples/p1.txt"), keywords, syms);
     loop {
 	let tok = lex.get();
 	println!("{:?}", tok);

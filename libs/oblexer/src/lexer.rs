@@ -189,11 +189,29 @@ impl Lexer {
     }
 
     fn parse_token_sym(&mut self) -> Token {
-	let c = self.is.get_char();
+
+	let trie = &mut self.syms_trie;
+	trie.state_reset();
 	let mut val = String::new();
-	val.push(c);
-	let res = Token::Symbol(val);
-	self.is.next_char();
-	res
+	let mut is_sym = false;
+	
+	loop {
+
+	    let c = self.is.get_char();
+	    trie.state_consume(c);
+	    if !trie.state_in_trie() {
+		if !is_sym {
+		    panic!("Failed to parse symbol");
+		}
+		break;
+	    }
+	    
+	    is_sym = trie.state_is_word();
+	    val.push(c);
+	    self.is.next_char();
+	}
+	
+	
+	Token::Symbol(val)
     }
 }
