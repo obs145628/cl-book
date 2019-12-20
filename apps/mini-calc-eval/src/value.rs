@@ -49,25 +49,25 @@ impl Value {
 
     pub fn sub(x: &Value, y: &Value) -> Value {
 	if x.is_int() && y.is_int() {
-	    Value::VInt(x.get_int() + y.get_int()) 
+	    Value::VInt(x.get_int() - y.get_int()) 
 	} else {
-	    Value::VFloat(x.get_float() + y.get_float())
+	    Value::VFloat(x.get_float() - y.get_float())
 	}
     }
 
     pub fn mul(x: &Value, y: &Value) -> Value {
 	if x.is_int() && y.is_int() {
-	    Value::VInt(x.get_int() + y.get_int()) 
+	    Value::VInt(x.get_int() * y.get_int()) 
 	} else {
-	    Value::VFloat(x.get_float() + y.get_float())
+	    Value::VFloat(x.get_float() * y.get_float())
 	}
     }
 
     pub fn div(x: &Value, y: &Value) -> Value {
 	if x.is_int() && y.is_int() {
-	    Value::VInt(x.get_int() + y.get_int()) 
+	    Value::VInt(x.get_int() / y.get_int()) 
 	} else {
-	    Value::VFloat(x.get_float() + y.get_float())
+	    Value::VFloat(x.get_float() / y.get_float())
 	}
     }
     
