@@ -12,7 +12,7 @@ impl Parser {
 
     pub fn new_from_file(path: &str, kws: Vec<&'static str>, syms: Vec<&'static str>) -> Parser {
 
-	let is = Stream::new(path);
+	let is = Stream::from_file(path);
 	let lex = Lexer::new(is, kws, syms);
 	Parser {
 	    lex

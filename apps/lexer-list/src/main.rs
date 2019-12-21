@@ -11,7 +11,7 @@ fn main() {
 
     let keywords = vec!["for"];
     let syms = vec!["+", "-", "*", "/"];
-    let mut lex = Lexer::new(Stream::new("examples/p1.txt"), keywords, syms);
+    let mut lex = Lexer::new(Stream::from_file("examples/p1.txt"), keywords, syms);
     loop {
 	let tok = lex.get();
 	println!("{:?}", tok);
