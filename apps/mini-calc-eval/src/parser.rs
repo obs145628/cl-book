@@ -1,56 +1,25 @@
-use oblexer::lexer::Lexer;
-use oblexer::stream::Stream;
 use oblexer::token::Token;
 use crate::value::Value;
 
 pub struct Parser
 {
-    lex: Lexer
+    ps: obparser::parser::Parser,
 }
 
 impl Parser
 {
 
     pub fn new(path: &str) -> Parser {
-
 	let kws = vec![];
 	let syms = vec!["+", "-", "*", "/", "(", ")"];
-	
 	Parser {
-	    lex: Lexer::new(Stream::new(path), kws, syms),
-	}
-    }
-
-    pub fn eat_eof(&mut self)
-    {
-	let tok = self.lex.get();
-	if !tok.is_eof() {
-	    panic!("Expected End Of File token, got '{:?}'", tok);
-	}
-    }
-
-    pub fn eat_sym(&mut self, val: &str)
-    {
-	let tok = self.lex.get();
-	match tok {
-	    Token::Symbol(x) if x == val => {},
-	    _ => panic!("Expected symbol '{}', got '{:?}'", val, tok)
-	}
-    }
-
-    pub fn try_eat_sym(&mut self, val: &str) -> bool {
-	match self.lex.peek() {
-	    Token::Symbol(x) if x == val => {
-		self.lex.get();
-		true
-	    },
-	    _ => false 
+	    ps: obparser::parser::Parser::new_from_file(path, kws, syms),
 	}
     }
 
     pub fn eval(&mut self) -> Value {
 	let res = self.eval_expr();
-	self.eat_eof();
+	self.ps.eat_eof();
 	res
     }
 
@@ -63,14 +32,14 @@ impl Parser
 	let mut res = self.eval_l1();
 
 	loop {
-	    match self.lex.peek() {
+	    match self.ps.peek_token() {
 		Token::Symbol(x) if x == "+" => {
-		    self.lex.get();
+		    self.ps.get_token();
 		    res = Value::add(&res, &self.eval_l1());
 		}
 
 		Token::Symbol(x) if x == "-" => {
-		    self.lex.get();
+		    self.ps.get_token();
 		    res = Value::sub(&res, &self.eval_l1());
 		}
 
@@ -86,14 +55,14 @@ impl Parser
 	let mut res = self.eval_l0();
 
 	loop {
-	    match self.lex.peek() {
+	    match self.ps.peek_token() {
 		Token::Symbol(x) if x == "*" => {
-		    self.lex.get();
+		    self.ps.get_token();
 		    res = Value::mul(&res, &self.eval_l0());
 		}
 
 		Token::Symbol(x) if x == "/" => {
-		    self.lex.get();
+		    self.ps.get_token();
 		    res = Value::div(&res, &self.eval_l0());
 		}
 
@@ -107,14 +76,14 @@ impl Parser
     // unary + -
     pub fn eval_l0(&mut self) -> Value {
 
-	match self.lex.peek() {
+	match self.ps.peek_token() {
 	    Token::Symbol(x) if x == "+" => {
-		self.lex.get();
+		self.ps.get_token();
 		self.eval_l0()
 	    }
 
 	    Token::Symbol(x) if x == "-" => {
-		self.lex.get();
+		self.ps.get_token();
 		Value::sub(&Value::VInt(0), &self.eval_l1())
 	    },
 
@@ -125,18 +94,18 @@ impl Parser
     // ( <expr> ) or const
     pub fn eval_prim(&mut self) -> Value {
 
-	if !self.try_eat_sym("(") {
+	if !self.ps.try_eat_sym("(") {
 	    return self.eval_const();
 	}
 	
 	let res = self.eval_expr();
-	self.eat_sym(")");
+	self.ps.eat_sym(")");
 	res
     }
     
 
     fn eval_const(&mut self) -> Value {
-	match self.lex.get() {
+	match self.ps.get_token() {
 	    Token::ValInt(x) => Value::VInt(x as i64),
 	    Token::ValFloat(x) => Value::VFloat(x),
 	    _ => panic!("Expected int or float token")
