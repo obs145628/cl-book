@@ -1,9 +1,22 @@
 mod parser;
 mod value;
 
+use std::env;
+
 fn main() {
-    let mut rt = parser::Parser::new("./ex/ops2.txt");
-    println!("{:?}", rt.eval());
+    match env::args().nth(1) {
+        None => {
+            println!("Usage: {} <expr>", env::args().next().unwrap());
+        }
+
+        Some(expr) => {
+            let mut rt = parser::Parser::new_from_str(&expr);
+            match rt.eval() {
+                value::Value::VInt(x) => println!("{}", x),
+                value::Value::VFloat(x) => println!("{}", x),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -11,7 +24,7 @@ mod tests {
     use super::*;
 
     fn eval_file(path: &str) -> value::Value {
-        parser::Parser::new(path).eval()
+        parser::Parser::new_from_file(path).eval()
     }
 
     #[test]

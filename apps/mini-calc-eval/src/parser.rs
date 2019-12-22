@@ -6,11 +6,23 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(path: &str) -> Parser {
-        let kws = vec![];
-        let syms = vec!["+", "-", "*", "/", "(", ")"];
+    fn kws() -> Vec<&'static str> {
+        vec![]
+    }
+
+    fn syms() -> Vec<&'static str> {
+        vec!["+", "-", "*", "/", "(", ")"]
+    }
+
+    pub fn new_from_file(path: &str) -> Parser {
         Parser {
-            ps: obparser::parser::Parser::new_from_file(path, kws, syms),
+            ps: obparser::parser::Parser::new_from_file(path, Parser::kws(), Parser::syms()),
+        }
+    }
+
+    pub fn new_from_str(path: &str) -> Parser {
+        Parser {
+            ps: obparser::parser::Parser::new_from_str(path, Parser::kws(), Parser::syms()),
         }
     }
 
