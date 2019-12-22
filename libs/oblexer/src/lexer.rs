@@ -67,14 +67,14 @@ impl Lexer {
                 return Token::EOF;
             };
 
-            let c = self.is.get_char();
+            let c = self.is.get_char().unwrap();
             if !c.is_whitespace() {
                 break;
             }
             self.is.next_char();
         }
 
-        let c = self.is.get_char();
+        let c = self.is.get_char().unwrap();
         if Lexer::char_is_id_start(c) {
             self.parse_token_id()
         } else if Lexer::char_isnumber(c) {
@@ -91,7 +91,7 @@ impl Lexer {
     fn parse_token_id(&mut self) -> Token {
         let mut name = String::new();
         loop {
-            let c = self.is.get_char();
+            let c = self.is.get_char().unwrap_or('\n');
             if !Lexer::char_is_id(c) {
                 break;
             }
@@ -115,7 +115,8 @@ impl Lexer {
         let mut dec = false;
 
         loop {
-            let c = self.is.get_char();
+            let c = self.is.get_char().unwrap_or('\n');
+
             if c.is_numeric() {
             } else if c == '.' {
                 if dec {
@@ -144,7 +145,7 @@ impl Lexer {
     }
 
     fn parse_token_str(&mut self) -> Token {
-        if self.is.get_char() != '"' {
+        if self.is.get_char().unwrap() != '"' {
             panic!("Exptected '\"'");
         }
         self.is.next_char();
@@ -155,7 +156,7 @@ impl Lexer {
             if self.is.eof() {
                 panic!("End of file in string");
             }
-            let c = self.is.get_char();
+            let c = self.is.get_char().unwrap();
             self.is.next_char();
 
             if c == '\n' {
@@ -178,7 +179,7 @@ impl Lexer {
         let mut is_sym = false;
 
         loop {
-            let c = self.is.get_char();
+            let c = self.is.get_char().unwrap_or('\n');
             trie.state_consume(c);
             if !trie.state_in_trie() {
                 if !is_sym {

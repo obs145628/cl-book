@@ -38,6 +38,42 @@ impl StreamLine for FileStreamLine {
     }
 }
 
+struct StringStreamLine {
+    data: String,
+    pos: usize,
+}
+
+impl StringStreamLine {
+    pub fn new(data: &str) -> StringStreamLine {
+        StringStreamLine {
+            data: String::from(data),
+            pos: 0,
+        }
+    }
+}
+
+impl StreamLine for StringStreamLine {
+    fn next_line(&mut self) -> Option<String> {
+        if self.pos == self.data.len() {
+            return None;
+        }
+
+        match &self.data[self.pos..].find('\n') {
+            Some(new_pos) => {
+                let res = String::from(&self.data[self.pos..*new_pos]);
+                self.pos = new_pos + 1;
+                Some(res)
+            }
+
+            None => {
+                let res = String::from(&self.data[self.pos..]);
+                self.pos = self.data.len();
+                Some(res)
+            }
+        }
+    }
+}
+
 pub struct Stream {
     is: Box<dyn StreamLine>,
     line: Vec<char>,
@@ -57,15 +93,27 @@ impl Stream {
         res
     }
 
+    pub fn from_str(data: &str) -> Stream {
+        let mut res = Stream {
+            is: Box::new(StringStreamLine::new(data)),
+            line: Vec::new(),
+            pos: 0,
+            is_eof: false,
+        };
+        res.load_char();
+        res
+    }
+
     pub fn eof(&self) -> bool {
         return self.is_eof;
     }
 
-    pub fn get_char(&self) -> char {
+    pub fn get_char(&self) -> Option<char> {
         if self.is_eof {
-            panic!("Stream::get_char(): EOF reached");
+            None
+        } else {
+            Some(self.line[self.pos])
         }
-        self.line[self.pos]
     }
 
     pub fn next_char(&mut self) {
@@ -75,6 +123,7 @@ impl Stream {
 
     fn load_char(&mut self) {
         if self.pos == self.line.len() {
+            self.pos = 0;
             match self.is.next_line() {
                 Some(str_line) => {
                     self.line = str_line.chars().collect();

@@ -13,6 +13,12 @@ impl Parser {
         Parser { lex }
     }
 
+    pub fn new_from_str(data: &str, kws: Vec<&'static str>, syms: Vec<&'static str>) -> Parser {
+        let is = Stream::from_str(data);
+        let lex = Lexer::new(is, kws, syms);
+        Parser { lex }
+    }
+
     pub fn peek_token(&mut self) -> Token {
         self.lex.peek()
     }
