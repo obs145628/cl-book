@@ -1,8 +1,5 @@
-
-#[derive(Clone)]
-#[derive(Debug)]
-pub enum Token
-{
+#[derive(Clone, Debug)]
+pub enum Token {
     EOF,
     Id(String),
     Keyword(String),
@@ -13,13 +10,10 @@ pub enum Token
 }
 
 impl Token {
-
-
     pub fn is_eof(&self) -> bool {
-	match self {
-	    Token::EOF => true,
-	    _ => false
-	}
+        match self {
+            Token::EOF => true,
+            _ => false,
+        }
     }
-    
 }

@@ -1,10 +1,7 @@
-
-pub mod stream;
-pub mod trie;
-pub mod token;
 pub mod lexer;
-
-
+pub mod stream;
+pub mod token;
+pub mod trie;
 
 #[cfg(test)]
 mod tests {
