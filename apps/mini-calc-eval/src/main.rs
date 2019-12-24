@@ -1,3 +1,4 @@
+mod ast;
 mod parser;
 mod value;
 
@@ -10,7 +11,11 @@ fn main() {
         }
 
         Some(expr) => {
-            let mut rt = parser::Parser::new_from_str(&expr);
+            let ast = parser::ParserAST::new_from_str(&expr).build();
+            ast.dump();
+            println!("");
+
+            let mut rt = parser::ParserEval::new_from_str(&expr);
             match rt.eval() {
                 value::Value::VInt(x) => println!("{}", x),
                 value::Value::VFloat(x) => println!("{}", x),
@@ -24,12 +29,12 @@ mod tests {
     use super::*;
 
     fn eval_file(path: &str) -> value::Value {
-        parser::Parser::new_from_file(path).eval()
+        parser::ParserEval::new_from_file(path).eval()
     }
 
     fn eval_file_from_str(path: &str) -> value::Value {
         let data = std::fs::read_to_string(path).unwrap();
-        parser::Parser::new_from_str(&data).eval()
+        parser::ParserEval::new_from_str(&data).eval()
     }
 
     #[test]
