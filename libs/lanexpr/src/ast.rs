@@ -6,9 +6,12 @@ pub type ASTPtr = Box<dyn AST>;
 pub trait ASTVisitor {
     fn visit_def_fun(&mut self, node: &ASTDefFun);
     fn visit_def_var(&mut self, node: &ASTDefVar);
-    fn visit_expr_const(&mut self, node: &ASTExprConst);
+    fn visit_expr_block(&mut self, node: &ASTExprBlock);
     fn visit_expr_call(&mut self, node: &ASTExprCall);
+    fn visit_expr_const(&mut self, node: &ASTExprConst);
+    fn visit_expr_if(&mut self, node: &ASTExprIf);
     fn visit_expr_let(&mut self, node: &ASTExprLet);
+    fn visit_expr_while(&mut self, node: &ASTExprWhile);
     fn visit_type_name(&mut self, node: &ASTTypeName);
 }
 
@@ -68,6 +71,23 @@ impl AST for ASTDefVar {
 }
 impl ASTDef for ASTDefVar {}
 
+pub struct ASTExprBlock {
+    exprs: Vec<ASTExprPtr>,
+}
+
+impl ASTExprBlock {
+    pub fn new(exprs: Vec<ASTExprPtr>) -> Box<ASTExprBlock> {
+        Box::new(ASTExprBlock { exprs })
+    }
+}
+
+impl AST for ASTExprBlock {
+    fn accept(&self, v: &mut dyn ASTVisitor) {
+        v.visit_expr_block(self);
+    }
+}
+impl ASTExpr for ASTExprBlock {}
+
 pub struct ASTExprCall {
     name: String,
     args: Vec<ASTExprPtr>,
@@ -103,6 +123,29 @@ impl AST for ASTExprConst {
 }
 impl ASTExpr for ASTExprConst {}
 
+pub struct ASTExprIf {
+    cond: ASTExprPtr,
+    val_if: ASTExprPtr,
+    val_else: ASTExprPtr,
+}
+
+impl ASTExprIf {
+    pub fn new(cond: ASTExprPtr, val_if: ASTExprPtr, val_else: ASTExprPtr) -> Box<ASTExprIf> {
+        Box::new(ASTExprIf {
+            cond,
+            val_if,
+            val_else,
+        })
+    }
+}
+
+impl AST for ASTExprIf {
+    fn accept(&self, v: &mut dyn ASTVisitor) {
+        v.visit_expr_if(self);
+    }
+}
+impl ASTExpr for ASTExprIf {}
+
 pub struct ASTExprLet {
     defs: Vec<ASTDefPtr>,
     val: ASTExprPtr,
@@ -120,6 +163,24 @@ impl AST for ASTExprLet {
     }
 }
 impl ASTExpr for ASTExprLet {}
+
+pub struct ASTExprWhile {
+    cond: ASTExprPtr,
+    body: ASTExprPtr,
+}
+
+impl ASTExprWhile {
+    pub fn new(cond: ASTExprPtr, body: ASTExprPtr) -> Box<ASTExprWhile> {
+        Box::new(ASTExprWhile { cond, body })
+    }
+}
+
+impl AST for ASTExprWhile {
+    fn accept(&self, v: &mut dyn ASTVisitor) {
+        v.visit_expr_while(self);
+    }
+}
+impl ASTExpr for ASTExprWhile {}
 
 pub struct ASTTypeName {
     name: String,
