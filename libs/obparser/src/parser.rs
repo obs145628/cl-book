@@ -150,4 +150,13 @@ impl Parser {
             _ => None,
         }
     }
+
+    pub fn eat_any_sym(&mut self, vals: Vec<&str>) -> Option<Token> {
+        match self.peek_token() {
+            Token::Symbol(x) if vals.iter().find(|elem| **elem == &x[..]).is_some() => {
+                Some(self.get_token())
+            }
+            _ => None,
+        }
+    }
 }

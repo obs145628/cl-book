@@ -46,22 +46,47 @@ impl Parser {
     // | expr_while
     // | expr_val
     pub fn r_expr(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        match self.ps.peek_token() {
+            Token::Keyword(x) if x == "if" => self.r_expr_if(),
+            Token::Keyword(x) if x == "let" => self.r_expr_let(),
+            Token::Keyword(x) if x == "while" => self.r_expr_while(),
+            _ => self.r_expr_val(),
+        }
     }
 
-    // expr_if: 'if' expr 'then' expr 'else' expr
+    // expr_if: 'if' expr 'then' expr ['else' expr]
     pub fn r_expr_if(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        self.ps.eat_keyword("if");
+        let cond = self.r_expr();
+        self.ps.eat_keyword("then");
+        let if_val = self.r_expr();
+        let else_val = if self.ps.try_eat_keyword("else") {
+            self.r_expr()
+        } else {
+            ast::ASTExprBlock::new(vec![])
+        };
+        ast::ASTExprIf::new(cond, if_val, else_val)
     }
 
     // expr_let: 'let' def* 'in' expr
     pub fn r_expr_let(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        self.ps.eat_keyword("let");
+        let mut defs = vec![];
+        while !self.ps.try_eat_keyword("in") {
+            defs.push(self.r_def());
+        }
+
+        let val = self.r_expr();
+        ast::ASTExprLet::new(defs, val)
     }
 
     // expr_while: 'while' expr 'do' expr
     pub fn r_expr_while(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        self.ps.eat_keyword("while");
+        let cond = self.r_expr();
+        self.ps.eat_keyword("do");
+        let body = self.r_expr();
+        ast::ASTExprWhile::new(cond, body)
     }
 
     // expr_val: expr_v5
@@ -72,17 +97,45 @@ impl Parser {
     // expr_v5:  expr_v4
     //         | expr_v4 '=' expr_v5
     pub fn r_expr_v5(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let left = self.r_expr_v4();
+        if !self.ps.try_eat_sym("=") {
+            return left;
+        }
+        let right = self.r_expr_v5();
+        ast::ASTExprCall::new("@op:set".to_string(), vec![left, right])
     }
 
     // expr_v4: expr_v3 ('==' expr_v3)*
     pub fn r_expr_v4(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let mut res = self.r_expr_v3();
+        while self.ps.try_eat_sym("==") {
+            let right = self.r_expr_v3();
+            res = ast::ASTExprCall::new("@op:eq".to_string(), vec![res, right]);
+        }
+        res
     }
 
     // expr_v3: expr_v2 (('<' | '>') expr_v2)*
     pub fn r_expr_v3(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let mut res = self.r_expr_v2();
+
+        loop {
+            let fname = match self.ps.peek_token() {
+                Token::Symbol(x) if x == "<" => Some("@op:lt"),
+                Token::Symbol(x) if x == ">" => Some("@op:gt"),
+                _ => None,
+            };
+
+            if fname.is_none() {
+                break;
+            }
+            let fname = fname.unwrap();
+            self.ps.get_token();
+            let right = self.r_expr_v2();
+            res = ast::ASTExprCall::new(fname.to_string(), vec![res, right]);
+        }
+
+        res
     }
 
     // expr_v2: expr_v1 (('+' | '-') expr_v1)*
