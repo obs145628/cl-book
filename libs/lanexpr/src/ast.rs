@@ -9,6 +9,7 @@ pub trait ASTVisitor {
     fn visit_expr_block(&mut self, node: &ASTExprBlock);
     fn visit_expr_call(&mut self, node: &ASTExprCall);
     fn visit_expr_const(&mut self, node: &ASTExprConst);
+    fn visit_expr_id(&mut self, node: &ASTExprId);
     fn visit_expr_if(&mut self, node: &ASTExprIf);
     fn visit_expr_let(&mut self, node: &ASTExprLet);
     fn visit_expr_while(&mut self, node: &ASTExprWhile);
@@ -122,6 +123,27 @@ impl AST for ASTExprConst {
     }
 }
 impl ASTExpr for ASTExprConst {}
+
+pub struct ASTExprId {
+    name: String,
+}
+
+impl ASTExprId {
+    pub fn new(name: String) -> Box<ASTExprId> {
+        Box::new(ASTExprId { name })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl AST for ASTExprId {
+    fn accept(&self, v: &mut dyn ASTVisitor) {
+        v.visit_expr_id(self);
+    }
+}
+impl ASTExpr for ASTExprId {}
 
 pub struct ASTExprIf {
     cond: ASTExprPtr,

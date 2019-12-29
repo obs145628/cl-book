@@ -1,6 +1,8 @@
 use crate::ast;
 use oblexer::token::Token;
 
+use std::any::Any;
+
 pub struct Parser {
     ps: obparser::parser::Parser,
 }
@@ -140,30 +142,112 @@ impl Parser {
 
     // expr_v2: expr_v1 (('+' | '-') expr_v1)*
     pub fn r_expr_v2(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let mut res = self.r_expr_v1();
+
+        loop {
+            let fname = match self.ps.peek_token() {
+                Token::Symbol(x) if x == "+" => Some("@op:add"),
+                Token::Symbol(x) if x == "-" => Some("@op:sub"),
+                _ => None,
+            };
+
+            if fname.is_none() {
+                break;
+            }
+            let fname = fname.unwrap();
+            self.ps.get_token();
+            let right = self.r_expr_v1();
+            res = ast::ASTExprCall::new(fname.to_string(), vec![res, right]);
+        }
+
+        res
     }
 
     // expr_v1: expr_vunop (('*' | '/' | '%') expr_vunop)*
     pub fn r_expr_v1(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let mut res = self.r_expr_vunop();
+
+        loop {
+            let fname = match self.ps.peek_token() {
+                Token::Symbol(x) if x == "*" => Some("@op:mul"),
+                Token::Symbol(x) if x == "/" => Some("@op:div"),
+                Token::Symbol(x) if x == "%" => Some("@op:mod"),
+                _ => None,
+            };
+
+            if fname.is_none() {
+                break;
+            }
+            let fname = fname.unwrap();
+            self.ps.get_token();
+            let right = self.r_expr_vunop();
+            res = ast::ASTExprCall::new(fname.to_string(), vec![res, right]);
+        }
+
+        res
     }
 
     // expr_vunop:  expr_vprim
     //            | ('+' | '-' | '!') expr_vunop
     pub fn r_expr_vunop(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        match self.ps.peek_token() {
+            Token::Symbol(x) if x == "+" => {
+                self.ps.get_token();
+                self.r_expr_vunop()
+            }
+
+            Token::Symbol(x) if x == "-" => {
+                self.ps.get_token();
+                ast::ASTExprCall::new("@op:neg".to_string(), vec![self.r_expr_vunop()])
+            }
+
+            Token::Symbol(x) if x == "!" => {
+                self.ps.get_token();
+                ast::ASTExprCall::new("@op:not".to_string(), vec![self.r_expr_vunop()])
+            }
+
+            _ => self.r_expr_vprim(),
+        }
     }
 
     // expr_vprim:  expr_vatom
-    //            | expr_vprim '(' expr*<,> ')'
+    //            | expr_vprim '(' expr_list<','> ')'
     pub fn r_expr_vprim(&mut self) -> ast::ASTExprPtr {
         unimplemented!();
+
+        let mut res = self.r_expr_vatom();
+        loop {
+            match self.ps.peek_token() {
+                Token::Symbol(x) if x == "(" => {
+                    self.ps.get_token();
+                    let args = self.r_expr_list(",");
+                    self.ps.eat_sym(")");
+
+                    // @TODO: how to do a downcast ? Seems impossible
+                    // Using visitors could be a workaround
+                    //let any_res = res.downcast::<ast::ASTExprId>();
+
+                    let name = String::new();
+                    res = ast::ASTExprCall::new(name, args);
+                }
+
+                _ => break,
+            }
+        }
+
+        res
     }
 
-    // expr_vatom:  '(' expr*<;> ')'
+    // expr_vatom:  '(' expr_list<';'> ')'
     //            | @int
     //	          | @id
     pub fn r_expr_vatom(&mut self) -> ast::ASTExprPtr {
+        unimplemented!();
+    }
+
+    // expr_list<sep>:  expr (sep expr)*
+    //                | @empty
+    pub fn r_expr_list(&mut self, sep: &str) -> Vec<ast::ASTExprPtr> {
         unimplemented!();
     }
 
