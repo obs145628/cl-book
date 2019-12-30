@@ -1,7 +1,6 @@
 use crate::ast;
+use crate::astcast::ASTStatic;
 use oblexer::token::Token;
-
-use std::any::Any;
 
 pub struct Parser {
     ps: obparser::parser::Parser,
@@ -213,8 +212,6 @@ impl Parser {
     // expr_vprim:  expr_vatom
     //            | expr_vprim '(' expr_list<','> ')'
     pub fn r_expr_vprim(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
-
         let mut res = self.r_expr_vatom();
         loop {
             match self.ps.peek_token() {
@@ -223,11 +220,11 @@ impl Parser {
                     let args = self.r_expr_list(",");
                     self.ps.eat_sym(")");
 
-                    // @TODO: how to do a downcast ? Seems impossible
-                    // Using visitors could be a workaround
-                    //let any_res = res.downcast::<ast::ASTExprId>();
+                    let name = match ASTStatic::resolve_expr(&*res) {
+                        ASTStatic::ExprId(x) => x,
+                        _ => panic!("r:expr: callee must be an id"),
+                    };
 
-                    let name = String::new();
                     res = ast::ASTExprCall::new(name, args);
                 }
 
@@ -242,13 +239,42 @@ impl Parser {
     //            | @int
     //	          | @id
     pub fn r_expr_vatom(&mut self) -> ast::ASTExprPtr {
-        unimplemented!();
+        let tok = self.ps.get_token();
+        match &tok {
+            Token::Symbol(x) if x == "(" => {
+                let res = self.r_expr_list(";");
+                self.ps.eat_sym(")");
+                ast::ASTExprBlock::new(res)
+            }
+
+            Token::ValInt(x) => ast::ASTExprConst::new(*x as i32),
+            Token::Keyword(x) => ast::ASTExprId::new(x.to_string()),
+            _ => panic!("r:expr_vatom: Invalid token {:?}", tok),
+        }
     }
 
     // expr_list<sep>:  expr (sep expr)*
     //                | @empty
     pub fn r_expr_list(&mut self, sep: &str) -> Vec<ast::ASTExprPtr> {
-        unimplemented!();
+        let mut has_sep = false;
+        let mut res = vec![];
+
+        loop {
+            match self.ps.peek_token() {
+                Token::Symbol(x) if x == ")" => {
+                    if has_sep {
+                        panic!("Invalid end of expression list after ',' symbol");
+                    }
+                    break;
+                }
+                _ => {}
+            }
+
+            res.push(self.r_expr());
+            has_sep = self.ps.try_eat_sym(sep);
+        }
+
+        res
     }
 
     // def:  def_var

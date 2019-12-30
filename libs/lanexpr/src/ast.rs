@@ -115,6 +115,10 @@ impl ASTExprConst {
     pub fn new(val: i32) -> Box<ASTExprConst> {
         Box::new(ASTExprConst { val })
     }
+
+    pub fn val(&self) -> i32 {
+        self.val
+    }
 }
 
 impl AST for ASTExprConst {
@@ -209,8 +213,12 @@ pub struct ASTTypeName {
 }
 
 impl ASTTypeName {
-    fn new(name: String) -> Box<ASTTypeName> {
+    pub fn new(name: String) -> Box<ASTTypeName> {
         Box::new(ASTTypeName { name })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
