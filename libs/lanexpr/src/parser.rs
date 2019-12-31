@@ -36,7 +36,7 @@ impl Parser {
     }
 
     // file: expr @eof
-    pub fn r_file(&mut self) -> ast::ASTExprPtr {
+    fn r_file(&mut self) -> ast::ASTExprPtr {
         let res = self.r_expr();
         self.ps.eat_eof();
         res
@@ -46,7 +46,7 @@ impl Parser {
     // | expr_let
     // | expr_while
     // | expr_val
-    pub fn r_expr(&mut self) -> ast::ASTExprPtr {
+    fn r_expr(&mut self) -> ast::ASTExprPtr {
         match self.ps.peek_token() {
             Token::Keyword(x) if x == "if" => self.r_expr_if(),
             Token::Keyword(x) if x == "let" => self.r_expr_let(),
@@ -56,7 +56,7 @@ impl Parser {
     }
 
     // expr_if: 'if' expr 'then' expr ['else' expr]
-    pub fn r_expr_if(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_if(&mut self) -> ast::ASTExprPtr {
         self.ps.eat_keyword("if");
         let cond = self.r_expr();
         self.ps.eat_keyword("then");
@@ -70,7 +70,7 @@ impl Parser {
     }
 
     // expr_let: 'let' def* 'in' expr
-    pub fn r_expr_let(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_let(&mut self) -> ast::ASTExprPtr {
         self.ps.eat_keyword("let");
         let mut defs = vec![];
         while !self.ps.try_eat_keyword("in") {
@@ -82,7 +82,7 @@ impl Parser {
     }
 
     // expr_while: 'while' expr 'do' expr
-    pub fn r_expr_while(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_while(&mut self) -> ast::ASTExprPtr {
         self.ps.eat_keyword("while");
         let cond = self.r_expr();
         self.ps.eat_keyword("do");
@@ -91,13 +91,13 @@ impl Parser {
     }
 
     // expr_val: expr_v5
-    pub fn r_expr_val(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_val(&mut self) -> ast::ASTExprPtr {
         self.r_expr_v5()
     }
 
     // expr_v5:  expr_v4
     //         | expr_v4 '=' expr_v5
-    pub fn r_expr_v5(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_v5(&mut self) -> ast::ASTExprPtr {
         let left = self.r_expr_v4();
         if !self.ps.try_eat_sym("=") {
             return left;
@@ -107,7 +107,7 @@ impl Parser {
     }
 
     // expr_v4: expr_v3 ('==' expr_v3)*
-    pub fn r_expr_v4(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_v4(&mut self) -> ast::ASTExprPtr {
         let mut res = self.r_expr_v3();
         while self.ps.try_eat_sym("==") {
             let right = self.r_expr_v3();
@@ -117,7 +117,7 @@ impl Parser {
     }
 
     // expr_v3: expr_v2 (('<' | '>') expr_v2)*
-    pub fn r_expr_v3(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_v3(&mut self) -> ast::ASTExprPtr {
         let mut res = self.r_expr_v2();
 
         loop {
@@ -140,7 +140,7 @@ impl Parser {
     }
 
     // expr_v2: expr_v1 (('+' | '-') expr_v1)*
-    pub fn r_expr_v2(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_v2(&mut self) -> ast::ASTExprPtr {
         let mut res = self.r_expr_v1();
 
         loop {
@@ -163,7 +163,7 @@ impl Parser {
     }
 
     // expr_v1: expr_vunop (('*' | '/' | '%') expr_vunop)*
-    pub fn r_expr_v1(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_v1(&mut self) -> ast::ASTExprPtr {
         let mut res = self.r_expr_vunop();
 
         loop {
@@ -188,7 +188,7 @@ impl Parser {
 
     // expr_vunop:  expr_vprim
     //            | ('+' | '-' | '!') expr_vunop
-    pub fn r_expr_vunop(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_vunop(&mut self) -> ast::ASTExprPtr {
         match self.ps.peek_token() {
             Token::Symbol(x) if x == "+" => {
                 self.ps.get_token();
@@ -211,7 +211,7 @@ impl Parser {
 
     // expr_vprim:  expr_vatom
     //            | expr_vprim '(' expr_list<','> ')'
-    pub fn r_expr_vprim(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_vprim(&mut self) -> ast::ASTExprPtr {
         let mut res = self.r_expr_vatom();
         loop {
             match self.ps.peek_token() {
@@ -238,7 +238,7 @@ impl Parser {
     // expr_vatom:  '(' expr_list<';'> ')'
     //            | @int
     //	          | @id
-    pub fn r_expr_vatom(&mut self) -> ast::ASTExprPtr {
+    fn r_expr_vatom(&mut self) -> ast::ASTExprPtr {
         let tok = self.ps.get_token();
         match &tok {
             Token::Symbol(x) if x == "(" => {
@@ -248,14 +248,14 @@ impl Parser {
             }
 
             Token::ValInt(x) => ast::ASTExprConst::new(*x as i32),
-            Token::Keyword(x) => ast::ASTExprId::new(x.to_string()),
+            Token::Id(x) => ast::ASTExprId::new(x.to_string()),
             _ => panic!("r:expr_vatom: Invalid token {:?}", tok),
         }
     }
 
     // expr_list<sep>:  expr (sep expr)*
     //                | @empty
-    pub fn r_expr_list(&mut self, sep: &str) -> Vec<ast::ASTExprPtr> {
+    fn r_expr_list(&mut self, sep: &str) -> Vec<ast::ASTExprPtr> {
         let mut has_sep = false;
         let mut res = vec![];
 
@@ -279,7 +279,7 @@ impl Parser {
 
     // def:  def_var
     //     | def_fun
-    pub fn r_def(&mut self) -> ast::ASTDefPtr {
+    fn r_def(&mut self) -> ast::ASTDefPtr {
         match self.ps.peek_token() {
             Token::Keyword(x) if x == "var" => self.r_def_var(),
             Token::Keyword(x) if x == "fun" => self.r_def_fun(),
@@ -291,7 +291,7 @@ impl Parser {
     }
 
     // def_var: 'var' @id ':' type '=' expr
-    pub fn r_def_var(&mut self) -> Box<ast::ASTDefVar> {
+    fn r_def_var(&mut self) -> Box<ast::ASTDefVar> {
         self.ps.eat_keyword("var");
         let name = self.ps.eat_id();
         self.ps.eat_sym(":");
@@ -302,7 +302,7 @@ impl Parser {
     }
 
     // def_fun: 'fun' @id '(' def_fun_args ')' ':' type '=' expr
-    pub fn r_def_fun(&mut self) -> Box<ast::ASTDefFun> {
+    fn r_def_fun(&mut self) -> Box<ast::ASTDefFun> {
         self.ps.eat_keyword("fun");
         let name = self.ps.eat_id();
         self.ps.eat_sym("(");
@@ -319,7 +319,7 @@ impl Parser {
     //              | @empty
     //
     // def_fun_arg: @id ':' type
-    pub fn r_def_fun_args(&mut self) -> Vec<(String, ast::ASTTypePtr)> {
+    fn r_def_fun_args(&mut self) -> Vec<(String, ast::ASTTypePtr)> {
         let mut has_sep = false;
         let mut res = vec![];
 
@@ -345,7 +345,7 @@ impl Parser {
     }
 
     // type: @id
-    pub fn r_type(&mut self) -> ast::ASTTypePtr {
+    fn r_type(&mut self) -> ast::ASTTypePtr {
         let name = self.ps.eat_id();
         ast::ASTTypeName::new(name)
     }
