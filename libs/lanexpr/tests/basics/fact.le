@@ -1,0 +1,24 @@
+let
+
+  fun fact_rec(x: int) : int =
+    if x < 2 then 1 else x * fact_rec(x - 1)
+
+  fun fact_iter(x: int) : int =
+      let
+	var res : int = 1
+      in (
+	while x > 1 do (
+ 	  res = res * x;
+	  x = x - 1
+	);
+	res
+      )
+	
+
+
+in
+  let var i : int = 0 in while i < 10 do (
+      println_int(fact_rec(i));
+      println_int(fact_iter(i));
+      i = i + 1
+    )

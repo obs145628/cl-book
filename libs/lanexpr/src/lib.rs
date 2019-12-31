@@ -31,4 +31,13 @@ mod tests {
             check_parser(&f);
         }
     }
+
+    #[test]
+    fn test_parser_basics() {
+        let files = list_files("./tests/basics/");
+        for f in files {
+            println!("running {}...", f);
+            check_parser(&f);
+        }
+    }
 }

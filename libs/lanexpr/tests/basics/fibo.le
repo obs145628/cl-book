@@ -1,0 +1,27 @@
+let
+
+  fun fibo_rec(x: int) : int =
+    if x < 2 then x else fibo_rec(x - 1) + fibo_rec(x - 2)
+
+  fun fibo_iter(x: int) : int =
+      let
+        var a : int = 0
+	var b : int = 1
+	var cpy_b : int = 0
+      in (
+	while x > 0 do (
+	  cpy_b = a;
+	  b = a + b;
+	  a = cpy_b
+	);
+	a
+      )
+	
+
+
+in
+  let var i : int = 0 in while i < 10 do (
+      println_int(fibo_rec(i));
+      println_int(fibo_iter(i));
+      i = i + 1
+    )
