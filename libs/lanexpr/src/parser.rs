@@ -220,7 +220,7 @@ impl Parser {
                     let args = self.r_expr_list(",");
                     self.ps.eat_sym(")");
 
-                    let name = match ASTStatic::resolve_expr(&*res) {
+                    let name = match ASTStatic::resolve(&res) {
                         ASTStatic::ExprId(x) => x,
                         _ => panic!("r:expr: callee must be an id"),
                     };
@@ -278,19 +278,41 @@ impl Parser {
     }
 
     // def:  def_var
-    //     | def_fn
+    //     | def_fun
     pub fn r_def(&mut self) -> ast::ASTDefPtr {
-        unimplemented!();
+        match self.ps.peek_token() {
+            Token::Keyword(x) if x == "var" => self.r_def_var(),
+            Token::Keyword(x) if x == "fun" => self.r_def_fun(),
+            _ => panic!(
+                "r:def: invalid keyword, expected var ou fun, got '{:?}'",
+                self.ps.peek_token()
+            ),
+        }
     }
 
     // def_var: 'var' @id ':' type '=' expr
     pub fn r_def_var(&mut self) -> Box<ast::ASTDefVar> {
-        unimplemented!();
+        self.ps.eat_keyword("var");
+        let name = self.ps.eat_id();
+        self.ps.eat_sym(":");
+        let var_type = self.r_type();
+        self.ps.eat_sym("=");
+        let val = self.r_expr();
+        ast::ASTDefVar::new(name, Some(var_type), val)
     }
 
     // def_fun: 'fun' @id '(' def_fun_args ')' ':' type '=' expr
     pub fn r_def_fun(&mut self) -> Box<ast::ASTDefFun> {
-        unimplemented!();
+        self.ps.eat_keyword("fun");
+        let name = self.ps.eat_id();
+        self.ps.eat_sym("(");
+        let args = self.r_def_fun_args();
+        self.ps.eat_sym(")");
+        self.ps.eat_sym(":");
+        let ret_type = self.r_type();
+        self.ps.eat_sym("=");
+        let body = self.r_expr();
+        ast::ASTDefFun::new(name, args, ret_type, body)
     }
 
     // def_fun_args:  def_fun_arg ( ',' def_fun_arg )*
@@ -298,11 +320,33 @@ impl Parser {
     //
     // def_fun_arg: @id ':' type
     pub fn r_def_fun_args(&mut self) -> Vec<(String, ast::ASTTypePtr)> {
-        unimplemented!();
+        let mut has_sep = false;
+        let mut res = vec![];
+
+        loop {
+            match self.ps.peek_token() {
+                Token::Symbol(x) if x == ")" => {
+                    if has_sep {
+                        panic!("Invalid end of arguments list after symbol ','");
+                    }
+                    break;
+                }
+                _ => {}
+            }
+
+            let arg_name = self.ps.eat_id();
+            self.ps.eat_sym(":");
+            let arg_type = self.r_type();
+            res.push((arg_name, arg_type));
+            has_sep = self.ps.try_eat_sym(",");
+        }
+
+        res
     }
 
     // type: @id
     pub fn r_type(&mut self) -> ast::ASTTypePtr {
-        unimplemented!();
+        let name = self.ps.eat_id();
+        ast::ASTTypeName::new(name)
     }
 }

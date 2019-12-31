@@ -14,13 +14,7 @@ pub enum ASTStatic {
 }
 
 impl ASTStatic {
-    pub fn resolve(node: &dyn ast::AST) -> ASTStatic {
-        let mut v = ASTGetStatic { res: None };
-        node.accept(&mut v);
-        v.res.unwrap()
-    }
-
-    pub fn resolve_expr(node: &dyn ast::ASTExpr) -> ASTStatic {
+    pub fn resolve(node: &ast::ASTExprPtr) -> ASTStatic {
         let mut v = ASTGetStatic { res: None };
         node.accept(&mut v);
         v.res.unwrap()
