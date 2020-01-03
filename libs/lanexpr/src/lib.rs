@@ -1,5 +1,7 @@
 mod ast;
 mod astcast;
+mod defstable;
+mod letype;
 mod parser;
 
 #[cfg(test)]
