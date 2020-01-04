@@ -6,6 +6,7 @@ version = "0.1.0"
 dependencies = [
  "oblexer 0.1.0",
  "obparser 0.1.0",
+ "obuid 0.1.0",
 ]
 
 [[package]]
@@ -18,4 +19,8 @@ version = "0.1.0"
 dependencies = [
  "oblexer 0.1.0",
 ]
+
+[[package]]
+name = "obuid"
+version = "0.1.0"
 

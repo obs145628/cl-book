@@ -3,6 +3,8 @@ mod astcast;
 mod defstable;
 mod letype;
 mod parser;
+mod typecheck;
+mod typeinfos;
 
 #[cfg(test)]
 mod tests {

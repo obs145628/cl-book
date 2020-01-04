@@ -34,6 +34,7 @@ impl DefsTable {
     }
 
     pub fn add_type(&mut self, id: &str, ty: LeTypePtr) {
+        assert!(self.get_top_type(id).is_none());
         self.scopes
             .last_mut()
             .unwrap()
@@ -42,6 +43,7 @@ impl DefsTable {
     }
 
     pub fn add_fun(&mut self, id: &str, ty: FnType) {
+        assert!(self.get_top_fun(id).is_none());
         self.scopes
             .last_mut()
             .unwrap()
@@ -50,6 +52,7 @@ impl DefsTable {
     }
 
     pub fn add_var(&mut self, id: &str, ty: LeTypePtr) {
+        assert!(self.get_top_var(id).is_none());
         self.scopes
             .last_mut()
             .unwrap()
