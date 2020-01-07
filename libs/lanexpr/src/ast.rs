@@ -268,6 +268,14 @@ impl ASTExprLet {
             uid: obuid::unique_usize(),
         })
     }
+
+    pub fn defs(&self) -> &Vec<ASTDefPtr> {
+        &self.defs
+    }
+
+    pub fn val(&self) -> &ASTExprPtr {
+        &self.val
+    }
 }
 
 impl AST for ASTExprLet {
@@ -294,6 +302,14 @@ impl ASTExprWhile {
             body,
             uid: obuid::unique_usize(),
         })
+    }
+
+    pub fn cond(&self) -> &ASTExprPtr {
+        &self.cond
+    }
+
+    pub fn body(&self) -> &ASTExprPtr {
+        &self.body
     }
 }
 
