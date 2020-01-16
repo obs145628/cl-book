@@ -16,6 +16,14 @@ mod tests {
         let _ast = ps.parse();
     }
 
+    fn check_type(path: &str) {
+        let mut ps = parser::Parser::new_from_file(path);
+        let ast = ps.parse();
+
+        let mut tc = typecheck::TypeCheck::new();
+        tc.check(&ast);
+    }
+
     fn list_files(dir: &str) -> Vec<String> {
         fs::read_dir(dir)
             .unwrap()
@@ -41,6 +49,15 @@ mod tests {
         for f in files {
             println!("running {}...", f);
             check_parser(&f);
+        }
+    }
+
+    #[test]
+    fn test_type_basics() {
+        let files = list_files("./tests/basics/");
+        for f in files {
+            println!("running {}...", f);
+            check_type(&f);
         }
     }
 }

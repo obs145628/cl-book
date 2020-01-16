@@ -19,15 +19,15 @@ let
 
   fun printnl() : void = putc(10)
 
-  fun println_int(x: int) : void = (
+  fun printnl_int(x: int) : void = (
       print_int(x);
-      println()
+      printnl()
   )
 
   in (
-    println_int(18);
-    println_int(0);
-    println_int(-6);
-    println_int(8);
-    println_int(-456)
+    printnl_int(18);
+    printnl_int(0);
+    printnl_int(-6);
+    printnl_int(8);
+    printnl_int(-456)
   )

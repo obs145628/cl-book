@@ -76,16 +76,20 @@ impl Type {
 
 #[derive(Debug, Clone)]
 pub struct FnType {
-    ret: Type,
     args: Vec<Type>,
+    ret: Type,
 }
 
 impl FnType {
-    pub fn ret(&self) -> &Type {
-        &self.ret
+    pub fn new(args: Vec<Type>, ret: Type) -> FnType {
+        FnType { args, ret }
     }
 
     pub fn args(&self) -> &Vec<Type> {
         &self.args
+    }
+
+    pub fn ret(&self) -> &Type {
+        &self.ret
     }
 }

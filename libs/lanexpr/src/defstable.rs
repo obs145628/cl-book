@@ -190,6 +190,83 @@ impl DefsTable {
     fn set_native_defs(&mut self) {
         self.add_type("int", Type::Val(TypeVal::Int));
         self.add_type("void", Type::Void);
+
+        self.add_fun(
+            "@op:set",
+            FnType::new(
+                vec![Type::Ref(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Void,
+            ),
+        );
+        self.add_fun(
+            "@op:eq",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:lt",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:gt",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:add",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:sub",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:mul",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:div",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:mod",
+            FnType::new(
+                vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+                Type::Val(TypeVal::Int),
+            ),
+        );
+        self.add_fun(
+            "@op:neg",
+            FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
+        );
+        self.add_fun(
+            "@op:not",
+            FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
+        );
+
+        self.add_fun(
+            "putc",
+            FnType::new(vec![Type::Val(TypeVal::Int)], Type::Void),
+        );
     }
 
     pub fn get_exp_type(&self, node: &dyn ASTExpr) -> Option<Type> {

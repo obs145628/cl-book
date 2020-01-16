@@ -49,6 +49,22 @@ impl ASTDefFun {
             uid: obuid::unique_usize(),
         })
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn args(&self) -> &Vec<(String, ASTTypePtr)> {
+        &self.args
+    }
+
+    pub fn ret(&self) -> &ASTTypePtr {
+        &self.ret
+    }
+
+    pub fn body(&self) -> &ASTExprPtr {
+        &self.body
+    }
 }
 
 impl AST for ASTDefFun {
@@ -77,6 +93,18 @@ impl ASTDefVar {
             init,
             uid: obuid::unique_usize(),
         })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn ty(&self) -> Option<&ASTTypePtr> {
+        self.ty.as_ref()
+    }
+
+    pub fn init(&self) -> &ASTExprPtr {
+        &self.init
     }
 }
 
@@ -339,10 +367,6 @@ impl ASTTypeName {
 
     pub fn name(&self) -> &str {
         &self.name
-    }
-
-    fn get_uid(&self) -> usize {
-        self.uid
     }
 }
 

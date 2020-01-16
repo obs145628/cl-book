@@ -1,10 +1,14 @@
 use crate::ast::*;
 use crate::defstable::DefsTable;
-use crate::letype::{Type, TypeVal};
+use crate::letype::{FnType, Type, TypeVal};
 
-struct TypeCheck {
+pub struct TypeCheck {
     res: Option<Type>,
     defs: DefsTable,
+
+    // when looking at deinfitions, only register the headers
+    // used to first define all function proptotypes before looking at bodyes
+    reg_headers: bool,
 }
 
 impl TypeCheck {
@@ -12,6 +16,7 @@ impl TypeCheck {
         TypeCheck {
             res: None,
             defs: DefsTable::new(),
+            reg_headers: false,
         }
     }
 
@@ -55,25 +60,97 @@ impl TypeCheck {
         self.defs.set_typename_type(&**node, new_ty.clone());
         new_ty
     }
+
+    fn check_fun_def(&mut self, node: &ASTDefFun) {
+        let name = node.name();
+        let args: Vec<Type> = node
+            .args()
+            .iter()
+            .map(|arg| self.get_typename_type(&arg.1))
+            .collect();
+        let ret = self.get_typename_type(node.ret());
+
+        let fn_type = FnType::new(args, ret);
+        self.defs.add_fun(name, fn_type);
+    }
+
+    fn check_fun_body(&mut self, node: &ASTDefFun) {
+        let fn_ret_ty = *self.defs.get_fun(node.name()).unwrap().ret();
+        self.defs.open_scope_fn();
+
+        for arg in node.args() {
+            let ty = self.get_typename_type(&arg.1);
+            self.defs.add_var(&arg.0, ty);
+        }
+
+        let body_ty = self.get_exp_type(node.body());
+
+        if !body_ty.can_be_cast_to(&fn_ret_ty) {
+            panic!(
+                "Invalid return type of function body: expected {:?}, got `{:?}",
+                fn_ret_ty, body_ty
+            );
+        }
+
+        self.defs.close_scope_fn();
+    }
+
+    fn check_var_def(&mut self, _: &ASTDefVar) {
+        // nothing to do
+    }
+
+    fn check_var_body(&mut self, node: &ASTDefVar) {
+        let name = node.name();
+        let var_ty = node.ty();
+        let init_ty = self.get_exp_type(node.init());
+
+        let var_ty = match var_ty {
+            None => init_ty,
+            Some(ty) => {
+                let ty = self.get_typename_type(ty);
+                if !init_ty.can_be_cast_to(&ty) {
+                    panic!(
+                        "Invalid init type for variable: expected {:?}, got {:?}",
+                        ty, init_ty
+                    );
+                }
+                ty
+            }
+        };
+
+        if var_ty.is_void() {
+            panic!("Variable type cannot be void");
+        }
+
+        self.defs.add_var(name, var_ty);
+    }
 }
 
 impl ASTVisitor for TypeCheck {
-    fn visit_def_fun(&mut self, _: &ASTDefFun) {
-        panic!("def_fun");
+    fn visit_def_fun(&mut self, node: &ASTDefFun) {
+        if self.reg_headers {
+            self.check_fun_def(node);
+        } else {
+            self.check_fun_body(node);
+        }
     }
-    fn visit_def_var(&mut self, _: &ASTDefVar) {
-        panic!("def_var");
+    fn visit_def_var(&mut self, node: &ASTDefVar) {
+        if self.reg_headers {
+            self.check_var_def(node);
+        } else {
+            self.check_var_body(node);
+        }
     }
 
     // => node.empty() ? <void> : type(node.last())
     fn visit_expr_block(&mut self, node: &ASTExprBlock) {
+        let mut res = Type::Void;
+
         for child in node.exprs() {
-            self.get_exp_type(child);
+            res = self.get_exp_type(child);
         }
 
-        if node.exprs().len() == 0 {
-            self.res = Some(Type::Void);
-        }
+        self.res = Some(res);
     }
 
     // => fntype(node.name()).ret
@@ -84,7 +161,10 @@ impl ASTVisitor for TypeCheck {
             .map(|arg| self.get_exp_type(arg))
             .collect();
 
-        let fun_ty = self.defs.get_fun(node.name()).unwrap();
+        let fun_ty = match self.defs.get_fun(node.name()) {
+            Some(ty) => ty,
+            None => panic!("Calling unknown function {}", node.name()),
+        };
         let fun_args = fun_ty.args();
         if fun_args.len() != fun_args.len() {
             panic!(
@@ -121,7 +201,15 @@ impl ASTVisitor for TypeCheck {
         if var_ty.is_none() {
             panic!("Usage of undefined variable {}", node.name());
         }
-        self.res = Some(var_ty.unwrap());
+
+        match var_ty.unwrap() {
+            Type::Val(vty) => self.res = Some(Type::Ref(vty)),
+            _ => panic!(
+                "Something wrong, cannot have an ExprId {} of type '{:?}'",
+                node.name(),
+                var_ty.unwrap()
+            ),
+        }
     }
 
     // if (<int>) then <a> else <a> => <a>
@@ -134,21 +222,28 @@ impl ASTVisitor for TypeCheck {
         let ty_if = self.get_exp_type(node.val_if());
         let ty_else = self.get_exp_type(node.val_else());
 
-        if !ty_else.can_be_cast_to(&ty_if) {
+        if ty_else.can_be_cast_to(&ty_if) {
+            self.res = Some(ty_if);
+        } else if ty_if.can_be_cast_to(&ty_else) {
+            self.res = Some(ty_else);
+        } else {
             panic!(
                 "ExprIf: types for if ({:?}) and else ({:?}) differ",
                 ty_if, ty_else
             );
         }
-
-        self.res = Some(ty_if);
     }
 
     fn visit_expr_let(&mut self, node: &ASTExprLet) {
-        //TODO: open scope
         self.defs.open_scope();
 
         //TODO: handle defs
+        for def in node.defs() {
+            self.reg_headers = true;
+            def.accept(self);
+            self.reg_headers = false;
+            def.accept(self);
+        }
 
         let val_ty = self.get_exp_type(node.val());
         self.res = Some(val_ty);
