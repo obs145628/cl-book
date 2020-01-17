@@ -5,16 +5,14 @@ use std::collections::HashMap;
 
 pub struct DefFun {
     pub id: DefFunId,
-    pub ast_id: usize,
+    pub ast_id: ASTUid,
     pub ty: FnType,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct DefFunId {
     id: usize,
 }
-
-const DEF_ID_NATIVE: usize = 0;
 
 /*
 struct DefVar {
@@ -37,44 +35,17 @@ pub struct DefsTable {
     scopes_vars: Vec<HashMap<String, Type>>,
     fn_scopes_pos: Vec<usize>,
 
-    exp_types: HashMap<usize, Type>, //contain type for every ASTExpr
-    typename_types: HashMap<usize, Type>, //contain type fro every ASTType
+    exp_types: HashMap<ASTUid, Type>, //contain type for every ASTExpr
+    typename_types: HashMap<ASTUid, Type>, //contain type for every ASTType
 
     defs_fns: Vec<DefFun>,
-    ast_def_fun_defs: HashMap<usize, DefFunId>, //contain DefFunId for every ASTDefFun
+    act_fn: Option<DefFunId>,
 
-                                                //fns: Vec<DefFun>,
-                                                //act_fn: Option<usize>,
+    ast_def_fun_defs: HashMap<ASTUid, DefFunId>, //contain DefFunId for every ASTDefFun
+    ast_expr_call_defs: HashMap<ASTUid, DefFunId>, //contain DefFunId of the function called by every ASTExprCall
 }
 
 impl DefsTable {
-    /*
-    pub fn add_fun_def(&mut self, node: &ASTDefFun, ty: FnType) {
-        let fun = DefFun {
-            id: self.fns.len(),
-            ast_id: node.get_uid(),
-            ty,
-            vars: vec![],
-        };
-        self.fns.push(fun);
-    }
-
-    pub fn add_var_def(&mut self, ast_id: usize, ty: Type) {
-        let f = &mut self.fns[self.act_fn.unwrap()];
-        f.vars.push(DefVar {
-            id: f.vars.len(),
-            ast_id,
-            ty,
-        });
-    }
-
-    pub fn change_actual_fn(&mut self, node: &ASTDefFun) {
-        let fn_id = node.get_uid();
-        let act_fn = self.fns.iter().position(|f| f.ast_id == fn_id).unwrap();
-        self.act_fn = Some(act_fn);
-    }
-    */
-
     pub fn new() -> DefsTable {
         let mut res = DefsTable {
             scopes_tys: vec![],
@@ -84,15 +55,25 @@ impl DefsTable {
 
             exp_types: HashMap::new(),
             typename_types: HashMap::new(),
-            //fns: vec![],
-            //act_fn: None,
+
             defs_fns: vec![],
+            act_fn: None,
 
             ast_def_fun_defs: HashMap::new(),
+            ast_expr_call_defs: HashMap::new(),
         };
         res.open_scope();
         res.set_native_defs();
         res
+    }
+
+    pub fn reset_actual_fn(&mut self) {
+        self.act_fn = None;
+    }
+
+    pub fn change_actual_fn(&mut self, node: &ASTDefFun) {
+        let fn_id = self.ast_def_fun_defs.get(&node.get_uid()).unwrap();
+        self.act_fn = Some(*fn_id);
     }
 
     pub fn total_scopes_len(&self) -> usize {
@@ -107,7 +88,7 @@ impl DefsTable {
             .insert(id.to_string(), ty);
     }
 
-    pub fn add_fun(&mut self, id: &str, ty: FnType, ast_id: usize) -> DefFunId {
+    pub fn add_fun(&mut self, id: &str, ty: FnType, ast_id: ASTUid) -> DefFunId {
         assert!(self.get_top_fun_id(id).is_none());
 
         let fn_id = DefFunId {
@@ -248,7 +229,7 @@ impl DefsTable {
                 vec![Type::Ref(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Void,
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:eq",
@@ -256,7 +237,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:lt",
@@ -264,7 +245,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:gt",
@@ -272,7 +253,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:add",
@@ -280,7 +261,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:sub",
@@ -288,7 +269,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:mul",
@@ -296,7 +277,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:div",
@@ -304,7 +285,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:mod",
@@ -312,23 +293,23 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:neg",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
         self.add_fun(
             "@op:not",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
 
         self.add_fun(
             "putc",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Void),
-            DEF_ID_NATIVE,
+            ASTUid::none(),
         );
     }
 
@@ -352,5 +333,16 @@ impl DefsTable {
         let uid = node.get_uid();
         assert!(self.typename_types.get(&uid).is_none());
         self.typename_types.insert(uid, ty);
+    }
+
+    pub fn get_ast_expr_call_def(&self, node: &ASTExprCall) -> Option<DefFunId> {
+        let uid = node.get_uid();
+        self.ast_expr_call_defs.get(&uid).copied()
+    }
+
+    pub fn set_ast_expr_call_def(&mut self, node: &ASTExprCall, def: DefFunId) {
+        let uid = node.get_uid();
+        assert!(self.ast_expr_call_defs.get(&uid).is_none());
+        self.ast_expr_call_defs.insert(uid, def);
     }
 }

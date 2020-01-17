@@ -77,6 +77,7 @@ impl TypeCheck {
     fn check_fun_body(&mut self, node: &ASTDefFun) {
         let fn_ret_ty = *self.defs.get_scope_fun(node.name()).unwrap().ty.ret();
         self.defs.open_scope_fn();
+        self.defs.change_actual_fn(node);
 
         for arg in node.args() {
             let ty = self.get_typename_type(&arg.1);
@@ -92,6 +93,7 @@ impl TypeCheck {
             );
         }
 
+        self.defs.reset_actual_fn();
         self.defs.close_scope_fn();
     }
 
@@ -165,6 +167,7 @@ impl ASTVisitor for TypeCheck {
             Some(ty) => ty,
             None => panic!("Calling unknown function {}", node.name()),
         };
+        let fun_id = fun_ty.id;
         let fun_args = fun_ty.ty.args();
         if fun_args.len() != fun_args.len() {
             panic!(
@@ -188,6 +191,7 @@ impl ASTVisitor for TypeCheck {
         }
 
         self.res = Some(*fun_ty.ty.ret());
+        self.defs.set_ast_expr_call_def(node, fun_id);
     }
 
     // => <int>

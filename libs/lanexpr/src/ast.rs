@@ -1,8 +1,25 @@
 use obuid;
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct ASTUid {
+    id: usize,
+}
+
+impl ASTUid {
+    fn next() -> ASTUid {
+        ASTUid {
+            id: obuid::unique_usize(),
+        }
+    }
+
+    pub fn none() -> ASTUid {
+        ASTUid { id: 0 }
+    }
+}
+
 pub trait AST {
     fn accept(&self, v: &mut dyn ASTVisitor);
-    fn get_uid(&self) -> usize;
+    fn get_uid(&self) -> ASTUid;
 }
 pub type ASTPtr = Box<dyn AST>;
 
@@ -31,7 +48,7 @@ pub struct ASTDefFun {
     args: Vec<(String, ASTTypePtr)>,
     ret: ASTTypePtr,
     body: ASTExprPtr,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTDefFun {
@@ -46,7 +63,7 @@ impl ASTDefFun {
             args,
             ret,
             body,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -72,7 +89,7 @@ impl AST for ASTDefFun {
         v.visit_def_fun(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -82,7 +99,7 @@ pub struct ASTDefVar {
     name: String,
     ty: Option<ASTTypePtr>,
     init: ASTExprPtr,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTDefVar {
@@ -91,7 +108,7 @@ impl ASTDefVar {
             name,
             ty,
             init,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -113,7 +130,7 @@ impl AST for ASTDefVar {
         v.visit_def_var(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -121,14 +138,14 @@ impl ASTDef for ASTDefVar {}
 
 pub struct ASTExprBlock {
     exprs: Vec<ASTExprPtr>,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprBlock {
     pub fn new(exprs: Vec<ASTExprPtr>) -> Box<ASTExprBlock> {
         Box::new(ASTExprBlock {
             exprs,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -142,7 +159,7 @@ impl AST for ASTExprBlock {
         v.visit_expr_block(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -151,7 +168,7 @@ impl ASTExpr for ASTExprBlock {}
 pub struct ASTExprCall {
     name: String,
     args: Vec<ASTExprPtr>,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprCall {
@@ -159,7 +176,7 @@ impl ASTExprCall {
         Box::new(ASTExprCall {
             name,
             args,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -177,7 +194,7 @@ impl AST for ASTExprCall {
         v.visit_expr_call(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -185,14 +202,14 @@ impl ASTExpr for ASTExprCall {}
 
 pub struct ASTExprConst {
     val: i32,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprConst {
     pub fn new(val: i32) -> Box<ASTExprConst> {
         Box::new(ASTExprConst {
             val,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -206,7 +223,7 @@ impl AST for ASTExprConst {
         v.visit_expr_const(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -214,14 +231,14 @@ impl ASTExpr for ASTExprConst {}
 
 pub struct ASTExprId {
     name: String,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprId {
     pub fn new(name: String) -> Box<ASTExprId> {
         Box::new(ASTExprId {
             name,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -235,7 +252,7 @@ impl AST for ASTExprId {
         v.visit_expr_id(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -245,7 +262,7 @@ pub struct ASTExprIf {
     cond: ASTExprPtr,
     val_if: ASTExprPtr,
     val_else: ASTExprPtr,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprIf {
@@ -254,7 +271,7 @@ impl ASTExprIf {
             cond,
             val_if,
             val_else,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -276,7 +293,7 @@ impl AST for ASTExprIf {
         v.visit_expr_if(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -285,7 +302,7 @@ impl ASTExpr for ASTExprIf {}
 pub struct ASTExprLet {
     defs: Vec<ASTDefPtr>,
     val: ASTExprPtr,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprLet {
@@ -293,7 +310,7 @@ impl ASTExprLet {
         Box::new(ASTExprLet {
             defs,
             val,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -311,7 +328,7 @@ impl AST for ASTExprLet {
         v.visit_expr_let(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -320,7 +337,7 @@ impl ASTExpr for ASTExprLet {}
 pub struct ASTExprWhile {
     cond: ASTExprPtr,
     body: ASTExprPtr,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTExprWhile {
@@ -328,7 +345,7 @@ impl ASTExprWhile {
         Box::new(ASTExprWhile {
             cond,
             body,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -346,7 +363,7 @@ impl AST for ASTExprWhile {
         v.visit_expr_while(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
@@ -354,14 +371,14 @@ impl ASTExpr for ASTExprWhile {}
 
 pub struct ASTTypeName {
     name: String,
-    uid: usize,
+    uid: ASTUid,
 }
 
 impl ASTTypeName {
     pub fn new(name: String) -> Box<ASTTypeName> {
         Box::new(ASTTypeName {
             name,
-            uid: obuid::unique_usize(),
+            uid: ASTUid::next(),
         })
     }
 
@@ -375,7 +392,7 @@ impl AST for ASTTypeName {
         v.visit_type_name(self);
     }
 
-    fn get_uid(&self) -> usize {
+    fn get_uid(&self) -> ASTUid {
         self.uid
     }
 }
