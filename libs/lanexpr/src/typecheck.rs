@@ -71,11 +71,11 @@ impl TypeCheck {
         let ret = self.get_typename_type(node.ret());
 
         let fn_type = FnType::new(args, ret);
-        self.defs.add_fun(name, fn_type);
+        self.defs.add_fun(name, fn_type, node.get_uid());
     }
 
     fn check_fun_body(&mut self, node: &ASTDefFun) {
-        let fn_ret_ty = *self.defs.get_fun(node.name()).unwrap().ret();
+        let fn_ret_ty = *self.defs.get_scope_fun(node.name()).unwrap().ty.ret();
         self.defs.open_scope_fn();
 
         for arg in node.args() {
@@ -161,11 +161,11 @@ impl ASTVisitor for TypeCheck {
             .map(|arg| self.get_exp_type(arg))
             .collect();
 
-        let fun_ty = match self.defs.get_fun(node.name()) {
+        let fun_ty = match self.defs.get_scope_fun(node.name()) {
             Some(ty) => ty,
             None => panic!("Calling unknown function {}", node.name()),
         };
-        let fun_args = fun_ty.args();
+        let fun_args = fun_ty.ty.args();
         if fun_args.len() != fun_args.len() {
             panic!(
                 "Invalid fun call to {}, epexted {} arguments, got {}",
@@ -187,7 +187,7 @@ impl ASTVisitor for TypeCheck {
             }
         }
 
-        self.res = Some(*fun_ty.ret());
+        self.res = Some(*fun_ty.ty.ret());
     }
 
     // => <int>

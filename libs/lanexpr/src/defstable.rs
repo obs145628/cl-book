@@ -3,6 +3,19 @@ use crate::letype::{FnType, Type, TypeVal};
 
 use std::collections::HashMap;
 
+pub struct DefFun {
+    pub id: DefFunId,
+    pub ast_id: usize,
+    pub ty: FnType,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct DefFunId {
+    id: usize,
+}
+
+const DEF_ID_NATIVE: usize = 0;
+
 /*
 struct DefVar {
     id: usize,
@@ -20,14 +33,18 @@ struct DefFun {
 
 pub struct DefsTable {
     scopes_tys: Vec<HashMap<String, Type>>,
-    scopes_fns: Vec<HashMap<String, FnType>>,
+    scopes_fns: Vec<HashMap<String, DefFunId>>,
     scopes_vars: Vec<HashMap<String, Type>>,
     fn_scopes_pos: Vec<usize>,
 
-    exp_types: HashMap<usize, Type>,
-    typename_types: HashMap<usize, Type>,
-    //fns: Vec<DefFun>,
-    //act_fn: Option<usize>,
+    exp_types: HashMap<usize, Type>, //contain type for every ASTExpr
+    typename_types: HashMap<usize, Type>, //contain type fro every ASTType
+
+    defs_fns: Vec<DefFun>,
+    ast_def_fun_defs: HashMap<usize, DefFunId>, //contain DefFunId for every ASTDefFun
+
+                                                //fns: Vec<DefFun>,
+                                                //act_fn: Option<usize>,
 }
 
 impl DefsTable {
@@ -69,6 +86,9 @@ impl DefsTable {
             typename_types: HashMap::new(),
             //fns: vec![],
             //act_fn: None,
+            defs_fns: vec![],
+
+            ast_def_fun_defs: HashMap::new(),
         };
         res.open_scope();
         res.set_native_defs();
@@ -87,12 +107,25 @@ impl DefsTable {
             .insert(id.to_string(), ty);
     }
 
-    pub fn add_fun(&mut self, id: &str, ty: FnType) {
-        assert!(self.get_top_fun(id).is_none());
+    pub fn add_fun(&mut self, id: &str, ty: FnType, ast_id: usize) -> DefFunId {
+        assert!(self.get_top_fun_id(id).is_none());
+
+        let fn_id = DefFunId {
+            id: self.defs_fns.len(),
+        };
+        self.defs_fns.push(DefFun {
+            id: fn_id,
+            ast_id,
+            ty,
+        });
+
         self.scopes_fns
             .last_mut()
             .unwrap()
-            .insert(id.to_string(), ty);
+            .insert(id.to_string(), fn_id);
+        self.ast_def_fun_defs.insert(ast_id, fn_id);
+
+        fn_id
     }
 
     pub fn add_var(&mut self, id: &str, ty: Type) {
@@ -107,8 +140,15 @@ impl DefsTable {
         self.scopes_tys.last().unwrap().get(id).copied()
     }
 
-    pub fn get_top_fun(&self, id: &str) -> Option<&FnType> {
-        self.scopes_fns.last().unwrap().get(id)
+    pub fn get_top_fun_id(&self, id: &str) -> Option<DefFunId> {
+        self.scopes_fns.last().unwrap().get(id).copied()
+    }
+
+    pub fn get_top_fun(&self, id: &str) -> Option<&DefFun> {
+        match self.get_top_fun_id(id) {
+            Some(fn_id) => self.defs_fns.get(fn_id.id),
+            _ => None,
+        }
     }
 
     pub fn get_top_var(&self, id: &str) -> Option<Type> {
@@ -126,15 +166,26 @@ impl DefsTable {
         None
     }
 
-    pub fn get_fun(&self, id: &str) -> Option<&FnType> {
+    pub fn get_fun_id(&self, id: &str) -> Option<DefFunId> {
         for scope in self.scopes_fns.iter().rev() {
             let item = scope.get(id);
             if item.is_some() {
-                return item;
+                return item.copied();
             }
         }
 
         None
+    }
+
+    pub fn get_scope_fun(&self, id: &str) -> Option<&DefFun> {
+        match self.get_fun_id(id) {
+            Some(fn_id) => self.defs_fns.get(fn_id.id),
+            _ => None,
+        }
+    }
+
+    pub fn get_fun(&self, id: DefFunId) -> &DefFun {
+        self.defs_fns.get(id.id).unwrap()
     }
 
     pub fn get_var(&self, id: &str) -> Option<Type> {
@@ -197,6 +248,7 @@ impl DefsTable {
                 vec![Type::Ref(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Void,
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:eq",
@@ -204,6 +256,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:lt",
@@ -211,6 +264,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:gt",
@@ -218,6 +272,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:add",
@@ -225,6 +280,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:sub",
@@ -232,6 +288,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:mul",
@@ -239,6 +296,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:div",
@@ -246,6 +304,7 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:mod",
@@ -253,19 +312,23 @@ impl DefsTable {
                 vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
                 Type::Val(TypeVal::Int),
             ),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:neg",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
+            DEF_ID_NATIVE,
         );
         self.add_fun(
             "@op:not",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int)),
+            DEF_ID_NATIVE,
         );
 
         self.add_fun(
             "putc",
             FnType::new(vec![Type::Val(TypeVal::Int)], Type::Void),
+            DEF_ID_NATIVE,
         );
     }
 
