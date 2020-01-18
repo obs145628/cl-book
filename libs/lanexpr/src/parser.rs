@@ -319,7 +319,7 @@ impl Parser {
     //              | @empty
     //
     // def_fun_arg: @id ':' type
-    fn r_def_fun_args(&mut self) -> Vec<(String, ast::ASTTypePtr)> {
+    fn r_def_fun_args(&mut self) -> Vec<Box<ast::ASTDefArg>> {
         let mut has_sep = false;
         let mut res = vec![];
 
@@ -337,7 +337,7 @@ impl Parser {
             let arg_name = self.ps.eat_id();
             self.ps.eat_sym(":");
             let arg_type = self.r_type();
-            res.push((arg_name, arg_type));
+            res.push(ast::ASTDefArg::new(arg_name, arg_type));
             has_sep = self.ps.try_eat_sym(",");
         }
 

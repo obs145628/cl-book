@@ -1,6 +1,7 @@
 use crate::ast;
 
 pub enum ASTStatic {
+    DefArg,
     DefFun,
     DefVar,
     ExprBlock,
@@ -26,6 +27,10 @@ struct ASTGetStatic {
 }
 
 impl ast::ASTVisitor for ASTGetStatic {
+    fn visit_def_arg(&mut self, _: &ast::ASTDefArg) {
+        self.res = Some(ASTStatic::DefArg);
+    }
+
     fn visit_def_fun(&mut self, _: &ast::ASTDefFun) {
         self.res = Some(ASTStatic::DefFun);
     }

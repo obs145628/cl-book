@@ -24,6 +24,7 @@ pub trait AST {
 pub type ASTPtr = Box<dyn AST>;
 
 pub trait ASTVisitor {
+    fn visit_def_arg(&mut self, node: &ASTDefArg);
     fn visit_def_fun(&mut self, node: &ASTDefFun);
     fn visit_def_var(&mut self, node: &ASTDefVar);
     fn visit_expr_block(&mut self, node: &ASTExprBlock);
@@ -43,9 +44,44 @@ pub type ASTExprPtr = Box<dyn ASTExpr>;
 pub trait ASTType: AST {}
 pub type ASTTypePtr = Box<dyn ASTType>;
 
+pub struct ASTDefArg {
+    name: String,
+    ty: ASTTypePtr,
+    uid: ASTUid,
+}
+
+impl ASTDefArg {
+    pub fn new(name: String, ty: ASTTypePtr) -> Box<ASTDefArg> {
+        Box::new(ASTDefArg {
+            name,
+            ty,
+            uid: ASTUid::next(),
+        })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn ty(&self) -> &ASTTypePtr {
+        &self.ty
+    }
+}
+
+impl AST for ASTDefArg {
+    fn accept(&self, v: &mut dyn ASTVisitor) {
+        v.visit_def_arg(self);
+    }
+
+    fn get_uid(&self) -> ASTUid {
+        self.uid
+    }
+}
+impl ASTDef for ASTDefArg {}
+
 pub struct ASTDefFun {
     name: String,
-    args: Vec<(String, ASTTypePtr)>,
+    args: Vec<Box<ASTDefArg>>,
     ret: ASTTypePtr,
     body: ASTExprPtr,
     uid: ASTUid,
@@ -54,7 +90,7 @@ pub struct ASTDefFun {
 impl ASTDefFun {
     pub fn new(
         name: String,
-        args: Vec<(String, ASTTypePtr)>,
+        args: Vec<Box<ASTDefArg>>,
         ret: ASTTypePtr,
         body: ASTExprPtr,
     ) -> Box<ASTDefFun> {
@@ -71,7 +107,7 @@ impl ASTDefFun {
         &self.name
     }
 
-    pub fn args(&self) -> &Vec<(String, ASTTypePtr)> {
+    pub fn args(&self) -> &Vec<Box<ASTDefArg>> {
         &self.args
     }
 
@@ -93,6 +129,7 @@ impl AST for ASTDefFun {
         self.uid
     }
 }
+
 impl ASTDef for ASTDefFun {}
 
 pub struct ASTDefVar {

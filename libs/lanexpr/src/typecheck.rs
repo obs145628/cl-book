@@ -66,7 +66,7 @@ impl TypeCheck {
         let args: Vec<Type> = node
             .args()
             .iter()
-            .map(|arg| self.get_typename_type(&arg.1))
+            .map(|arg| self.get_typename_type(arg.ty()))
             .collect();
         let ret = self.get_typename_type(node.ret());
 
@@ -80,8 +80,8 @@ impl TypeCheck {
         self.defs.change_actual_fn(node);
 
         for arg in node.args() {
-            let ty = self.get_typename_type(&arg.1);
-            self.defs.add_var(&arg.0, ty);
+            let ty = self.get_typename_type(arg.ty());
+            self.defs.add_var(arg.name(), ty);
         }
 
         let body_ty = self.get_exp_type(node.body());
@@ -129,6 +129,10 @@ impl TypeCheck {
 }
 
 impl ASTVisitor for TypeCheck {
+    fn visit_def_arg(&mut self, _: &ASTDefArg) {
+        unreachable!();
+    }
+
     fn visit_def_fun(&mut self, node: &ASTDefFun) {
         if self.reg_headers {
             self.check_fun_def(node);
