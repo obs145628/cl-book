@@ -7,11 +7,60 @@ pub struct DefFun {
     pub id: DefFunId,
     pub ast_id: ASTUid,
     pub ty: FnType,
+
+    vars: Vec<DefVar>,
+}
+
+impl DefFun {
+    fn add_var(&mut self, ast_id: ASTUid, ty: Type) -> DefVarId {
+        let var_id = DefVarId {
+            id: self.vars.len(),
+        };
+        self.vars.push(DefVar {
+            id: var_id,
+            fn_id: self.id,
+            ast_id,
+            ty,
+        });
+        var_id
+    }
+
+    fn get_var(&self, var_id: DefVarId) -> &DefVar {
+        &self.vars[var_id.as_usize()]
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct DefFunId {
     id: usize,
+}
+
+impl DefFunId {
+    pub fn as_usize(&self) -> usize {
+        self.id
+    }
+
+    pub fn fn_main() -> DefFunId {
+        DefFunId { id: 0 }
+    }
+}
+
+pub struct DefVar {
+    pub id: DefVarId,
+    pub fn_id: DefFunId,
+    pub ast_id: ASTUid,
+    pub ty: Type,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct DefVarId {
+    id: usize,
+}
+
+impl DefVarId {
+    pub fn as_usize(&self) -> usize {
+        self.id
+    }
 }
 
 /*
@@ -32,17 +81,19 @@ struct DefFun {
 pub struct DefsTable {
     scopes_tys: Vec<HashMap<String, Type>>,
     scopes_fns: Vec<HashMap<String, DefFunId>>,
-    scopes_vars: Vec<HashMap<String, Type>>,
+    scopes_vars: Vec<HashMap<String, DefVarId>>,
     fn_scopes_pos: Vec<usize>,
+    fn_scopes_ids: Vec<DefFunId>,
 
     exp_types: HashMap<ASTUid, Type>, //contain type for every ASTExpr
     typename_types: HashMap<ASTUid, Type>, //contain type for every ASTType
 
     defs_fns: Vec<DefFun>,
-    act_fn: Option<DefFunId>,
 
     ast_def_fun_defs: HashMap<ASTUid, DefFunId>, //contain DefFunId for every ASTDefFun
     ast_expr_call_defs: HashMap<ASTUid, DefFunId>, //contain DefFunId of the function called by every ASTExprCall
+    ast_def_var_defs: HashMap<ASTUid, DefVarId>, //contain DefVarId for every variable def (ASTDefVar) and arg def (ASTDefArg)
+    ast_expr_id_defs: HashMap<ASTUid, DefVarId>, //contain DefVarId of the var referenced by every ASTExprId
 }
 
 impl DefsTable {
@@ -52,32 +103,35 @@ impl DefsTable {
             scopes_fns: vec![],
             scopes_vars: vec![],
             fn_scopes_pos: vec![],
+            fn_scopes_ids: vec![],
 
             exp_types: HashMap::new(),
             typename_types: HashMap::new(),
 
             defs_fns: vec![],
-            act_fn: None,
 
             ast_def_fun_defs: HashMap::new(),
             ast_expr_call_defs: HashMap::new(),
+            ast_def_var_defs: HashMap::new(),
+            ast_expr_id_defs: HashMap::new(),
         };
         res.open_scope();
         res.set_native_defs();
         res
     }
 
-    pub fn reset_actual_fn(&mut self) {
-        self.act_fn = None;
-    }
-
-    pub fn change_actual_fn(&mut self, node: &ASTDefFun) {
-        let fn_id = self.ast_def_fun_defs.get(&node.get_uid()).unwrap();
-        self.act_fn = Some(*fn_id);
-    }
-
     pub fn total_scopes_len(&self) -> usize {
         self.scopes_tys.len()
+    }
+
+    pub fn actual_fn(&self) -> &DefFun {
+        let fn_id = self.fn_scopes_ids.last().unwrap();
+        &self.defs_fns[fn_id.as_usize()]
+    }
+
+    pub fn actual_fn_as_mut(&mut self) -> &mut DefFun {
+        let fn_id = self.fn_scopes_ids.last().unwrap();
+        &mut self.defs_fns[fn_id.as_usize()]
     }
 
     pub fn add_type(&mut self, id: &str, ty: Type) {
@@ -98,23 +152,31 @@ impl DefsTable {
             id: fn_id,
             ast_id,
             ty,
+            vars: vec![],
         });
+        self.ast_def_fun_defs.insert(ast_id, fn_id);
 
         self.scopes_fns
             .last_mut()
             .unwrap()
             .insert(id.to_string(), fn_id);
-        self.ast_def_fun_defs.insert(ast_id, fn_id);
 
         fn_id
     }
 
-    pub fn add_var(&mut self, id: &str, ty: Type) {
-        assert!(self.get_top_var(id).is_none());
+    pub fn add_var(&mut self, id: &str, ty: Type, ast_id: ASTUid) -> DefVarId {
+        assert!(self.get_top_var_id(id).is_none());
+
+        let fun = self.actual_fn_as_mut();
+        let var_id = fun.add_var(ast_id, ty);
+        self.ast_def_var_defs.insert(ast_id, var_id);
+
         self.scopes_vars
             .last_mut()
             .unwrap()
-            .insert(id.to_string(), ty);
+            .insert(id.to_string(), var_id);
+
+        var_id
     }
 
     pub fn get_top_type(&self, id: &str) -> Option<Type> {
@@ -132,8 +194,15 @@ impl DefsTable {
         }
     }
 
-    pub fn get_top_var(&self, id: &str) -> Option<Type> {
+    pub fn get_top_var_id(&self, id: &str) -> Option<DefVarId> {
         self.scopes_vars.last().unwrap().get(id).copied()
+    }
+
+    pub fn get_top_var(&self, id: &str) -> Option<&DefVar> {
+        match self.get_top_var_id(id) {
+            Some(var_id) => Some(self.actual_fn().get_var(var_id)),
+            _ => None,
+        }
     }
 
     pub fn get_type(&self, id: &str) -> Option<Type> {
@@ -169,7 +238,7 @@ impl DefsTable {
         self.defs_fns.get(id.id).unwrap()
     }
 
-    pub fn get_var(&self, id: &str) -> Option<Type> {
+    pub fn get_var_id(&self, id: &str) -> Option<DefVarId> {
         for scope in self.scopes_vars.iter().rev() {
             let item = scope.get(id);
             if item.is_some() {
@@ -180,16 +249,33 @@ impl DefsTable {
         None
     }
 
+    pub fn get_scope_var(&self, id: &str) -> Option<&DefVar> {
+        match self.get_var_id(id) {
+            Some(var_id) => Some(self.actual_fn().get_var(var_id)),
+            _ => None,
+        }
+    }
+
+    pub fn get_var(&self, id: DefVarId) -> &DefVar {
+        self.actual_fn().get_var(id)
+    }
+
     pub fn open_scope(&mut self) {
         self.scopes_tys.push(HashMap::new());
         self.scopes_fns.push(HashMap::new());
         self.scopes_vars.push(HashMap::new());
     }
 
-    pub fn open_scope_fn(&mut self) {
+    pub fn open_scope_fn(&mut self, node: Option<&ASTDefFun>) {
         let beg_fn = self.scopes_tys.len();
         self.open_scope();
         self.fn_scopes_pos.push(beg_fn);
+
+        let fn_id = match node {
+            Some(def) => *self.ast_def_fun_defs.get(&def.get_uid()).unwrap(),
+            None => DefFunId::fn_main(),
+        };
+        self.fn_scopes_ids.push(fn_id);
     }
 
     pub fn close_scope(&mut self) {
@@ -215,11 +301,19 @@ impl DefsTable {
             panic!("Trying to close scope for function, but no function there");
         }
         self.fn_scopes_pos.pop().unwrap();
+        self.fn_scopes_ids.pop().unwrap();
 
         self.close_scope();
     }
 
     fn set_native_defs(&mut self) {
+        self.defs_fns.push(DefFun {
+            id: DefFunId::fn_main(),
+            ast_id: ASTUid::none(),
+            ty: FnType::new(vec![], Type::Void),
+            vars: vec![],
+        });
+
         self.add_type("int", Type::Val(TypeVal::Int));
         self.add_type("void", Type::Void);
 
@@ -344,5 +438,16 @@ impl DefsTable {
         let uid = node.get_uid();
         assert!(self.ast_expr_call_defs.get(&uid).is_none());
         self.ast_expr_call_defs.insert(uid, def);
+    }
+
+    pub fn get_ast_expr_id_def(&self, node: &ASTExprId) -> Option<DefVarId> {
+        let uid = node.get_uid();
+        self.ast_expr_id_defs.get(&uid).copied()
+    }
+
+    pub fn set_ast_expr_id_def(&mut self, node: &ASTExprId, def: DefVarId) {
+        let uid = node.get_uid();
+        assert!(self.ast_expr_id_defs.get(&uid).is_none());
+        self.ast_expr_id_defs.insert(uid, def);
     }
 }

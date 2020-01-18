@@ -21,7 +21,7 @@ impl TypeCheck {
     }
 
     pub fn check(&mut self, node: &ASTExprPtr) {
-        self.defs.open_scope_fn();
+        self.defs.open_scope_fn(None);
 
         node.accept(self);
 
@@ -76,12 +76,11 @@ impl TypeCheck {
 
     fn check_fun_body(&mut self, node: &ASTDefFun) {
         let fn_ret_ty = *self.defs.get_scope_fun(node.name()).unwrap().ty.ret();
-        self.defs.open_scope_fn();
-        self.defs.change_actual_fn(node);
+        self.defs.open_scope_fn(Some(node));
 
         for arg in node.args() {
             let ty = self.get_typename_type(arg.ty());
-            self.defs.add_var(arg.name(), ty);
+            self.defs.add_var(arg.name(), ty, arg.get_uid());
         }
 
         let body_ty = self.get_exp_type(node.body());
@@ -93,7 +92,6 @@ impl TypeCheck {
             );
         }
 
-        self.defs.reset_actual_fn();
         self.defs.close_scope_fn();
     }
 
@@ -124,7 +122,7 @@ impl TypeCheck {
             panic!("Variable type cannot be void");
         }
 
-        self.defs.add_var(name, var_ty);
+        self.defs.add_var(name, var_ty, node.get_uid());
     }
 }
 
@@ -205,19 +203,23 @@ impl ASTVisitor for TypeCheck {
 
     // => typename(node.name())
     fn visit_expr_id(&mut self, node: &ASTExprId) {
-        let var_ty = self.defs.get_var(node.name());
+        let var_ty = self.defs.get_scope_var(node.name());
         if var_ty.is_none() {
             panic!("Usage of undefined variable {}", node.name());
         }
+        let var_ty = var_ty.unwrap();
+        let var_id = var_ty.id;
 
-        match var_ty.unwrap() {
+        match var_ty.ty {
             Type::Val(vty) => self.res = Some(Type::Ref(vty)),
             _ => panic!(
                 "Something wrong, cannot have an ExprId {} of type '{:?}'",
                 node.name(),
-                var_ty.unwrap()
+                var_ty.ty
             ),
         }
+
+        self.defs.set_ast_expr_id_def(node, var_id);
     }
 
     // if (<int>) then <a> else <a> => <a>
