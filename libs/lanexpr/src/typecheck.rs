@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::bindapp::BindApp;
 use crate::bindbuilder::BindBuilder;
 use crate::letype::{FnType, Type, TypeVal};
 
@@ -26,6 +27,10 @@ impl TypeCheck {
         self.builder.begin();
         node.accept(self);
         self.builder.end();
+    }
+
+    pub fn get_bindings(self) -> BindApp {
+        self.builder.get_binding()
     }
 
     fn get_exp_type(&mut self, node: &ASTExprPtr) -> Type {

@@ -1,5 +1,7 @@
 use crate::ast;
 use crate::astcast::ASTStatic;
+use crate::nativedefs;
+
 use oblexer::token::Token;
 
 pub struct Parser {
@@ -103,7 +105,7 @@ impl Parser {
             return left;
         }
         let right = self.r_expr_v5();
-        ast::ASTExprCall::new("@op:set".to_string(), vec![left, right])
+        ast::ASTExprCall::new(nativedefs::OP_SET.name().to_string(), vec![left, right])
     }
 
     // expr_v4: expr_v3 ('==' expr_v3)*
@@ -111,7 +113,7 @@ impl Parser {
         let mut res = self.r_expr_v3();
         while self.ps.try_eat_sym("==") {
             let right = self.r_expr_v3();
-            res = ast::ASTExprCall::new("@op:eq".to_string(), vec![res, right]);
+            res = ast::ASTExprCall::new(nativedefs::OP_EQ.name().to_string(), vec![res, right]);
         }
         res
     }
@@ -122,8 +124,8 @@ impl Parser {
 
         loop {
             let fname = match self.ps.peek_token() {
-                Token::Symbol(x) if x == "<" => Some("@op:lt"),
-                Token::Symbol(x) if x == ">" => Some("@op:gt"),
+                Token::Symbol(x) if x == "<" => Some(nativedefs::OP_LT.name()),
+                Token::Symbol(x) if x == ">" => Some(nativedefs::OP_GT.name()),
                 _ => None,
             };
 
@@ -145,8 +147,8 @@ impl Parser {
 
         loop {
             let fname = match self.ps.peek_token() {
-                Token::Symbol(x) if x == "+" => Some("@op:add"),
-                Token::Symbol(x) if x == "-" => Some("@op:sub"),
+                Token::Symbol(x) if x == "+" => Some(nativedefs::OP_ADD.name()),
+                Token::Symbol(x) if x == "-" => Some(nativedefs::OP_SUB.name()),
                 _ => None,
             };
 
@@ -168,9 +170,9 @@ impl Parser {
 
         loop {
             let fname = match self.ps.peek_token() {
-                Token::Symbol(x) if x == "*" => Some("@op:mul"),
-                Token::Symbol(x) if x == "/" => Some("@op:div"),
-                Token::Symbol(x) if x == "%" => Some("@op:mod"),
+                Token::Symbol(x) if x == "*" => Some(nativedefs::OP_MUL.name()),
+                Token::Symbol(x) if x == "/" => Some(nativedefs::OP_DIV.name()),
+                Token::Symbol(x) if x == "%" => Some(nativedefs::OP_MOD.name()),
                 _ => None,
             };
 
@@ -197,12 +199,18 @@ impl Parser {
 
             Token::Symbol(x) if x == "-" => {
                 self.ps.get_token();
-                ast::ASTExprCall::new("@op:neg".to_string(), vec![self.r_expr_vunop()])
+                ast::ASTExprCall::new(
+                    nativedefs::OP_NEG.name().to_string(),
+                    vec![self.r_expr_vunop()],
+                )
             }
 
             Token::Symbol(x) if x == "!" => {
                 self.ps.get_token();
-                ast::ASTExprCall::new("@op:not".to_string(), vec![self.r_expr_vunop()])
+                ast::ASTExprCall::new(
+                    nativedefs::OP_NOT.name().to_string(),
+                    vec![self.r_expr_vunop()],
+                )
             }
 
             _ => self.r_expr_vprim(),

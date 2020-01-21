@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub struct BindBuilder {
     app: BindApp,
     scope: BindScope,
-    type_names: HashMap<String, Type>,
+    type_names: HashMap<&'static str, Type>,
     funs: Vec<BindFunId>,
 }
 
@@ -116,12 +116,6 @@ impl BindBuilder {
         self.scope.close_fun();
     }
 
-    fn init_native_types(&mut self) {
-        self.type_names
-            .insert("int".to_string(), Type::Val(TypeVal::Int));
-        self.type_names.insert("void".to_string(), Type::Void);
-    }
-
     fn add_native_fun(&mut self, def: &nativedefs::NativeFun) -> BindFunId {
         let id = self.add_native_fun_hidden(def);
         self.scope.add_fun(def.name(), id);
@@ -130,6 +124,16 @@ impl BindBuilder {
 
     fn add_native_fun_hidden(&mut self, def: &nativedefs::NativeFun) -> BindFunId {
         self.app.add_fun_native(def.name(), def.ty().clone())
+    }
+
+    fn add_native_type(&mut self, def: &nativedefs::NativeType) {
+        self.type_names.insert(def.name(), def.ty());
+    }
+
+    fn init_native_types(&mut self) {
+        for ty in nativedefs::TYPES_LIST.iter() {
+            self.add_native_type(ty);
+        }
     }
 
     fn init_native_funs(&mut self) {

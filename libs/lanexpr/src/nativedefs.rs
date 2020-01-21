@@ -19,6 +19,25 @@ impl NativeFun {
     }
 }
 
+pub struct NativeType {
+    name: &'static str,
+    ty: Type,
+}
+
+impl NativeType {
+    pub fn new(name: &'static str, ty: Type) -> Self {
+        NativeType { name, ty }
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn ty(&self) -> Type {
+        self.ty
+    }
+}
+
 lazy_static! {
     pub static ref OP_SET: NativeFun = NativeFun::new(
         "@op:set",
@@ -99,9 +118,12 @@ lazy_static! {
         NativeFun::new("@spe:__main", FnType::new(vec![], Type::Void));
     pub static ref SPE_NATIVE_DEFS: NativeFun =
         NativeFun::new("@spe:__native_defs", FnType::new(vec![], Type::Void));
+    pub static ref TYPE_INT: NativeType = NativeType::new("int", Type::Val(TypeVal::Int));
+    pub static ref TYPE_VOID: NativeType = NativeType::new("void", Type::Void);
     pub static ref OPS_LIST: Vec<&'static NativeFun> = vec![
         &OP_SET, &OP_EQ, &OP_LT, &OP_GT, &OP_ADD, &OP_SUB, &OP_MUL, &OP_DIV, &OP_MOD, &OP_NEG,
         &OP_NOT
     ];
     pub static ref STD_FUNS_LIST: Vec<&'static NativeFun> = vec![&STD_FUN_PUTC];
+    pub static ref TYPES_LIST: Vec<&'static NativeType> = vec![&TYPE_INT, &TYPE_VOID];
 }
