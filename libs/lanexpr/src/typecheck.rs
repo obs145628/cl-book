@@ -108,7 +108,6 @@ impl TypeCheck {
     }
 
     fn check_var_body(&mut self, node: &ASTDefVar) {
-        let name = node.name();
         let var_ty = node.ty();
         let init_ty = self.get_exp_type(node.init());
 

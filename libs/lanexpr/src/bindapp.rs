@@ -21,6 +21,12 @@ impl BindApp {
         }
     }
 
+    pub fn dump_bindings(&self) {
+        for fun in self.funs.get_funs() {
+            fun.dump_bindings();
+        }
+    }
+
     pub fn add_fun_ast(&mut self, name: &str, ty: FnType, ast_id: ASTUid) -> BindFunId {
         let fun_id = self.funs.add_fun(name, ty, Some(ast_id));
         self.ast2fun.insert(ast_id, fun_id);

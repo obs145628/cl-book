@@ -1,18 +1,18 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod ast;
-mod astcast;
-mod letype;
-mod nativedefs;
-mod parser;
-mod typecheck;
+pub mod ast;
+pub mod astcast;
+pub mod letype;
+pub mod nativedefs;
+pub mod parser;
+pub mod typecheck;
 
-mod bindapp;
-mod bindbuilder;
-mod bindfun;
-mod bindscope;
-mod bindvar;
+pub mod bindapp;
+pub mod bindbuilder;
+pub mod bindfun;
+pub mod bindscope;
+pub mod bindvar;
 
 #[cfg(test)]
 mod tests {

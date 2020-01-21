@@ -7,11 +7,10 @@ impl TypeVal {
     pub fn is_int(&self) -> bool {
         match self {
             TypeVal::Int => true,
-            _ => false,
         }
     }
 
-    pub fn can_be_cast_to(&self, dst: &TypeVal) -> bool {
+    pub fn can_be_cast_to(&self, _dst: &TypeVal) -> bool {
         true
     }
 }

@@ -3,7 +3,7 @@ use crate::bindapp::BindApp;
 use crate::bindfun::{BindFun, BindFunId};
 use crate::bindscope::BindScope;
 use crate::bindvar::BindVar;
-use crate::letype::{FnType, Type, TypeVal};
+use crate::letype::{FnType, Type};
 use crate::nativedefs;
 
 use std::collections::HashMap;

@@ -30,6 +30,10 @@ impl BindVar {
     pub fn ast_id(&self) -> ASTUid {
         self.ast_id
     }
+
+    pub fn dump_bindings(&self) {
+        println!("[VAR][{}] {}: {:?}", self.id.id, self.name, self.ty);
+    }
 }
 
 pub struct BindVarsList {
@@ -56,5 +60,9 @@ impl BindVarsList {
 
     pub fn get_var(&self, id: BindVarId) -> &BindVar {
         &self.list[id.id]
+    }
+
+    pub fn get_vars(&self) -> &Vec<BindVar> {
+        &self.list
     }
 }

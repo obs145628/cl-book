@@ -56,6 +56,24 @@ impl BindFun {
         self.ast_id.is_none()
     }
 
+    pub fn dump_bindings(&self) {
+        let code_kind = if self.is_native() { "NATIVE" } else { "USER" };
+        println!(
+            "[FUN][{}] {}: {:?} ({} CODE)",
+            self.id.id, self.name, self.ty, code_kind
+        );
+
+        for (i, var) in self.vars.get_vars().iter().enumerate() {
+            if i == self.ty.args().len() {
+                println!("   Locals:");
+            } else if i == 0 {
+                println!("Arguments:");
+            }
+            var.dump_bindings();
+        }
+        println!();
+    }
+
     pub fn add_var(&mut self, name: &str, ty: Type, ast_id: ASTUid) -> BindVarId {
         let var_id = self.vars.add_var(name, ty, ast_id);
         self.ast2var.insert(ast_id, var_id);
@@ -153,5 +171,9 @@ impl BindFunsList {
 
     pub fn get_fun_mut(&mut self, id: BindFunId) -> &mut BindFun {
         &mut self.list[id.id]
+    }
+
+    pub fn get_funs(&self) -> &Vec<BindFun> {
+        &self.list
     }
 }
