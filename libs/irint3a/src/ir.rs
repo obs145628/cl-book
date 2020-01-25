@@ -16,6 +16,14 @@
 // There is no special register to pass arguments, or get return value: it's all chosen with call instruction
 // There is no special register to set return value: it's all chosen with ret instruction
 //
+// Labels and Branching:
+// This only concern IR file syntax
+// We can give a label to any instruction, by preceding it with <labelname> :. labelname is any identifier
+// the jump / br instructions take this identifier to locale the right label then instruction
+//
+// Function reference:
+// This only concern IR file syntax
+// To refer to the function with the call instruction, we simply use it's function identifier
 
 /// Represent a simple IR instruction
 pub enum Ins {
@@ -118,7 +126,7 @@ impl InsLoad {
 }
 
 /// Instruction store
-/// Read the 32bit adress stored in dst register, and store the content of src register and that address
+/// Read the 32bit adress stored in dst register, and store the content of src register at that address
 /// store <dstreg>, <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsStore {
@@ -355,7 +363,7 @@ impl InsRet {
 /// They have an unisgned unique identifier
 ///
 /// Writing a local function syntax is:
-/// define <addr> <name> { <body> }
+/// define <addr> <name> <body>
 /// For extern functions syntax is:
 /// define <addr> <name> extern
 pub struct DefFun {
