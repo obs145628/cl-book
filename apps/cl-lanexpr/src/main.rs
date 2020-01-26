@@ -4,7 +4,10 @@ use clap::{App, Arg};
 use lanexpr::ast;
 use lanexpr::bindapp::BindApp;
 use lanexpr::parser;
+use lanexpr::translater;
 use lanexpr::typecheck;
+
+use irint3a::irprinter::CodePrintable;
 
 fn do_parse(path: &str) -> ast::ASTExprPtr {
     let mut ps = parser::Parser::new_from_file(path);
@@ -15,6 +18,12 @@ fn do_typecheck(ast: &ast::ASTExprPtr) -> BindApp {
     let mut tc = typecheck::TypeCheck::new();
     tc.check(&ast);
     tc.get_bindings()
+}
+
+fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
+    let tr = translater::irint3a::Translater::new(root, ba);
+    let code = tr.translate();
+    code.print_code(&mut std::io::stdout());
 }
 
 fn main() {
@@ -42,6 +51,11 @@ fn main() {
                 .long("dump-bindings")
                 .help("Only compoute and display bindings informations"),
         )
+        .arg(
+            Arg::with_name("gen-irint3a")
+                .long("gen-irint3a")
+                .help("Generate IR code for irint3a"),
+        )
         .get_matches();
 
     let input_path = matches.value_of("INPUT").unwrap();
@@ -55,5 +69,9 @@ fn main() {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);
         ati.dump_bindings();
+    } else if matches.occurrences_of("gen-irint3a") > 0 {
+        let ast = do_parse(input_path);
+        let ati = do_typecheck(&ast);
+        gen_irint3a(&ast, &ati);
     }
 }

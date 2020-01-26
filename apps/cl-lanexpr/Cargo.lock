@@ -28,6 +28,7 @@ name = "cl-lanexpr"
 version = "0.1.0"
 dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "irint3a 0.1.0",
  "lanexpr 0.1.0",
 ]
 
@@ -54,9 +55,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "irint3a"
+version = "0.1.0"
+dependencies = [
+ "oblexer 0.1.0",
+ "obparser 0.1.0",
+]
+
+[[package]]
 name = "lanexpr"
 version = "0.1.0"
 dependencies = [
+ "irint3a 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "oblexer 0.1.0",
  "obparser 0.1.0",

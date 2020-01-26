@@ -14,6 +14,8 @@ pub mod bindfun;
 pub mod bindscope;
 pub mod bindvar;
 
+pub mod translater;
+
 #[cfg(test)]
 mod tests {
 

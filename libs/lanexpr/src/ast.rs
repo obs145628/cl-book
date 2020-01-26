@@ -19,6 +19,7 @@ impl ASTUid {
 
 pub trait AST {
     fn accept(&self, v: &mut dyn ASTVisitor);
+    fn accept_children(&self, v: &mut dyn ASTVisitor);
     fn get_uid(&self) -> ASTUid;
 }
 pub type ASTPtr = Box<dyn AST>;
@@ -73,6 +74,10 @@ impl AST for ASTDefArg {
         v.visit_def_arg(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        self.ty.accept(v);
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -125,6 +130,14 @@ impl AST for ASTDefFun {
         v.visit_def_fun(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        for arg in &self.args {
+            arg.accept(v);
+        }
+        self.ret.accept(v);
+        self.body.accept(v);
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -167,6 +180,13 @@ impl AST for ASTDefVar {
         v.visit_def_var(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        if let Some(ty) = &self.ty {
+            ty.accept(v);
+        }
+        self.init.accept(v);
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -194,6 +214,12 @@ impl ASTExprBlock {
 impl AST for ASTExprBlock {
     fn accept(&self, v: &mut dyn ASTVisitor) {
         v.visit_expr_block(self);
+    }
+
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        for expr in &self.exprs {
+            expr.accept(v);
+        }
     }
 
     fn get_uid(&self) -> ASTUid {
@@ -231,6 +257,12 @@ impl AST for ASTExprCall {
         v.visit_expr_call(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        for arg in &self.args {
+            arg.accept(v);
+        }
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -260,6 +292,8 @@ impl AST for ASTExprConst {
         v.visit_expr_const(self);
     }
 
+    fn accept_children(&self, _v: &mut dyn ASTVisitor) {}
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -288,6 +322,8 @@ impl AST for ASTExprId {
     fn accept(&self, v: &mut dyn ASTVisitor) {
         v.visit_expr_id(self);
     }
+
+    fn accept_children(&self, _v: &mut dyn ASTVisitor) {}
 
     fn get_uid(&self) -> ASTUid {
         self.uid
@@ -330,6 +366,12 @@ impl AST for ASTExprIf {
         v.visit_expr_if(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        self.cond.accept(v);
+        self.val_if.accept(v);
+        self.val_else.accept(v);
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -363,6 +405,13 @@ impl ASTExprLet {
 impl AST for ASTExprLet {
     fn accept(&self, v: &mut dyn ASTVisitor) {
         v.visit_expr_let(self);
+    }
+
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        for def in &self.defs {
+            def.accept(v);
+        }
+        self.val.accept(v);
     }
 
     fn get_uid(&self) -> ASTUid {
@@ -400,6 +449,11 @@ impl AST for ASTExprWhile {
         v.visit_expr_while(self);
     }
 
+    fn accept_children(&self, v: &mut dyn ASTVisitor) {
+        self.cond.accept(v);
+        self.body.accept(v);
+    }
+
     fn get_uid(&self) -> ASTUid {
         self.uid
     }
@@ -428,6 +482,8 @@ impl AST for ASTTypeName {
     fn accept(&self, v: &mut dyn ASTVisitor) {
         v.visit_type_name(self);
     }
+
+    fn accept_children(&self, _v: &mut dyn ASTVisitor) {}
 
     fn get_uid(&self) -> ASTUid {
         self.uid

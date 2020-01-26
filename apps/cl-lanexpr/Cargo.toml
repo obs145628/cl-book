@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
-lanexpr = { path = "../../libs/lanexpr/" } 
+lanexpr = { path = "../../libs/lanexpr/" }
+irint3a = { path = "../../libs/irint3a/" }
