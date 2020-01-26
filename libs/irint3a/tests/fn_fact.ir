@@ -1,0 +1,25 @@
+define 0 _main
+  ret %0
+
+define 1 _fact
+  alloca %1
+  store %1, %0
+  load %2, %1
+  movi %3, 2
+  cmplt %4, %2, %3
+  br %4, Lres1, Lrec
+  
+Lres1:
+  movi %3, 1
+  jump Lend
+
+Lrec:
+ load %2, %1
+ movi %3, 1
+ sub %4, %2, %3
+ call %5, _fact, %4
+ mul %6, %2, %5
+ movr %3, %6
+ 
+Lend:
+  ret %3

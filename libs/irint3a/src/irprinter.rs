@@ -66,16 +66,19 @@ impl IRPrinter {
     }
 
     fn print_fun(&mut self, f: &ir::DefFun, writer: &mut dyn Write) {
-        self.prepare_fun(f);
         let body = f.body();
         let fn_id = f.addr().0;
-        let fn_name = self.fn_names.get(&fn_id).unwrap();
-        write!(writer, "define {} F{} ", fn_id, fn_name).unwrap();
+        let fn_name = *self.fn_names.get(&fn_id).unwrap();
+        if !body.is_none() {
+            self.prepare_fun(f);
+        }
+
+        write!(writer, "define {} f{} ", fn_id, fn_name).unwrap();
         match body {
             Some(body) => {
-                write!(writer, "{{\n").unwrap();
+                write!(writer, "\n").unwrap();
                 self.print_body(body, writer);
-                write!(writer, "}}\n").unwrap();
+                write!(writer, "\n").unwrap();
             }
             _ => write!(writer, "extern\n").unwrap(),
         }
@@ -83,12 +86,15 @@ impl IRPrinter {
 
     fn print_body(&mut self, body: &Vec<ir::Ins>, writer: &mut dyn Write) {
         for (id, ins) in body.iter().enumerate() {
-            write!(writer, "  ").unwrap();
-            match self.local_labels.get(&id) {
-                Some(ins_label) => write!(writer, "L{}: ", ins_label).unwrap(),
-                _ => {}
+            if let Some(ins_label) = self.local_labels.get(&id) {
+                if id != 0 {
+                    write!(writer, "\n").unwrap();
+                }
+
+                write!(writer, "L{}:\n", ins_label).unwrap();
             }
 
+            write!(writer, "  ").unwrap();
             self.print_ins(ins, writer);
             write!(writer, "\n").unwrap();
         }
@@ -152,7 +158,7 @@ impl IRPrinter {
 
     fn print_ins_cmpbin(&self, ins: &ir::InsCmpbin, writer: &mut dyn Write) {
         let ins_name = match ins.kind() {
-            ir::InsCmpbinKind::Eq => "compeq",
+            ir::InsCmpbinKind::Eq => "cmpeq",
             ir::InsCmpbinKind::Gt => "cpmgt",
             ir::InsCmpbinKind::Lt => "cmplt",
         };
@@ -178,7 +184,7 @@ impl IRPrinter {
         let label_false = self.local_labels.get(&ins.label_false().0).unwrap();
         write!(
             writer,
-            "br {}, L{}, L{}",
+            "br %{}, L{}, L{}",
             ins.src().0,
             label_true,
             label_false
@@ -188,7 +194,7 @@ impl IRPrinter {
 
     fn print_ins_call(&self, ins: &ir::InsCall, writer: &mut dyn Write) {
         let fn_name = self.fn_names.get(&ins.fun().0).unwrap();
-        write!(writer, "call %{}, F{}", ins.dst().0, fn_name).unwrap();
+        write!(writer, "call %{}, f{}", ins.dst().0, fn_name).unwrap();
         for arg in ins.args() {
             write!(writer, ", %{}", arg.0).unwrap();
         }

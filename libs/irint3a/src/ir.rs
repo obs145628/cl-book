@@ -15,6 +15,7 @@
 // The notion of stack frame / calling convention is abstracted away and not present in the IR
 // There is no special register to pass arguments, or get return value: it's all chosen with call instruction
 // There is no special register to set return value: it's all chosen with ret instruction
+// All the registers remain unchanged after returning from a function call (even if callee change some registers)
 //
 // Labels and Branching:
 // This only concern IR file syntax

@@ -60,7 +60,8 @@ impl StreamLine for StringStreamLine {
 
         match &self.data[self.pos..].find('\n') {
             Some(new_pos) => {
-                let res = String::from(&self.data[self.pos..*new_pos]);
+                let new_pos = self.pos + *new_pos;
+                let res = String::from(&self.data[self.pos..new_pos + 1]);
                 self.pos = new_pos + 1;
                 Some(res)
             }
@@ -136,5 +137,111 @@ impl Stream {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    fn read_files_lines(path: &str) -> Vec<String> {
+        let f = File::open(path).unwrap();
+        let is = std::io::BufReader::new(f);
+        let mut res: Vec<String> = is.lines().map(|l| l.unwrap().to_string() + "\n").collect();
+
+        while res.len() > 1 && res.last().unwrap().len() == 1 {
+            res.pop();
+        }
+        res
+    }
+
+    fn read_lines_filestream(path: &str) -> Vec<String> {
+        let mut res = vec![];
+        let mut is = FileStreamLine::new(path);
+        loop {
+            match is.next_line() {
+                Some(l) => res.push(l),
+                None => break,
+            }
+        }
+
+        while res.len() > 1 && res.last().unwrap().len() == 1 {
+            res.pop();
+        }
+        res
+    }
+
+    fn read_str_lines(s: &str) -> Vec<String> {
+        let mut res: Vec<String> = s.split("\n").map(|l| l.to_string() + "\n").collect();
+
+        while res.len() > 1 && res.last().unwrap().len() == 1 {
+            res.pop();
+        }
+        res
+    }
+
+    fn read_lines_strstream(s: &str) -> Vec<String> {
+        let mut res = vec![];
+        let mut is = StringStreamLine::new(s);
+        loop {
+            match is.next_line() {
+                Some(l) => res.push(l),
+                None => break,
+            }
+        }
+
+        while res.len() > 1 && res.last().unwrap().len() == 1 {
+            res.pop();
+        }
+        res
+    }
+
+    fn test_read_lines_file(path: &str) {
+        let the_ref = read_files_lines(path);
+        let my_res = read_lines_filestream(path);
+        assert_eq!(the_ref, my_res);
+    }
+
+    fn test_read_lines_str(path: &str) {
+        let s = std::fs::read_to_string(path).unwrap();
+        let the_ref = read_str_lines(&s);
+        let my_res = read_lines_strstream(&s);
+        assert_eq!(the_ref, my_res);
+    }
+
+    #[test]
+    fn test_read_lines_f1() {
+        test_read_lines_file("./tests/lines1.txt");
+    }
+
+    #[test]
+    fn test_read_lines_oneline() {
+        test_read_lines_file("./tests/oneline.txt");
+    }
+
+    #[test]
+    fn test_read_lines_empty() {
+        test_read_lines_file("./tests/empty.txt");
+    }
+
+    #[test]
+    fn test_read_lines_f2() {
+        test_read_lines_file("./tests/lines2.txt");
+    }
+
+    #[test]
+    fn test_read_lines_f1_str() {
+        test_read_lines_str("./tests/lines1.txt");
+    }
+
+    #[test]
+    fn test_read_lines_f2_str() {
+        test_read_lines_str("./tests/lines2.txt");
+    }
+
+    #[test]
+    fn test_read_lines_oneline_str() {
+        test_read_lines_str("./tests/oneline.txt");
     }
 }

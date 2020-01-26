@@ -1,7 +1,7 @@
 define 0 _main
   ret %0
 
-define 1 add
+define 1 _add
   alloca %2
   alloca %3
   store %2, %0
