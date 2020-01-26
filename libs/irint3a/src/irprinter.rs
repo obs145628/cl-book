@@ -1,97 +1,72 @@
 use crate::ir;
 
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io::Write;
 
 pub trait CodePrintable {
     fn print_code(&self, writer: &mut dyn Write);
 }
 
-impl CodePrintable for ir::Module {
+impl CodePrintable for ir::ModuleExtended {
     fn print_code(&self, writer: &mut dyn Write) {
-        let mut printer = IRPrinter::new();
-        printer.print_mod(self, writer);
+        let mut printer = IRPrinter::new(self);
+        printer.print_mod(writer);
     }
 }
 
-pub struct IRPrinter {
-    local_labels: HashMap<usize, usize>, //label (val) for each instruction index (key)
-    fn_names: HashMap<usize, usize>,     //label name (val) for each function address (key)
+struct IRPrinter<'a> {
+    module_ex: &'a ir::ModuleExtended,
+    module: &'a ir::Module,
+    fun: Option<&'a ir::DefFun>,
+    fun_ex: Option<&'a ir::FunExtended>,
 }
 
-impl IRPrinter {
-    fn new() -> Self {
+impl<'a> IRPrinter<'a> {
+    fn new(module_ex: &'a ir::ModuleExtended) -> Self {
         IRPrinter {
-            local_labels: HashMap::new(),
-            fn_names: HashMap::new(),
+            module_ex,
+            module: module_ex.module(),
+            fun: None,
+            fun_ex: None,
         }
     }
 
-    fn print_mod(&mut self, m: &ir::Module, writer: &mut dyn Write) {
-        self.prepare_mod(m);
-        for fun in m.defs() {
-            self.print_fun(fun, writer);
+    fn print_mod(&mut self, writer: &mut dyn Write) {
+        for fun in self.module.defs() {
+            let fun_ex = self.module_ex.get_fun(fun.addr());
+            self.fun = Some(fun);
+            self.fun_ex = Some(fun_ex);
+            self.print_fun(writer);
             write!(writer, "\n").unwrap();
         }
     }
 
-    fn prepare_mod(&mut self, m: &ir::Module) {
-        // 1) Create label for all functions
-        for (label, fun) in m.defs().iter().enumerate() {
-            self.fn_names.insert(fun.addr().0, label);
+    fn print_fun(&self, writer: &mut dyn Write) {
+        let f = self.fun.unwrap();
+        let f_ex = self.fun_ex.unwrap();
+        let fn_id = f.addr();
+
+        write!(writer, "define {} {} ", fn_id.0, f_ex.name()).unwrap();
+
+        if f.body().is_some() {
+            write!(writer, "\n").unwrap();
+            self.print_body(writer);
+            write!(writer, "\n").unwrap();
+        } else {
+            write!(writer, "extern\n").unwrap();
         }
     }
 
-    fn prepare_fun(&mut self, fun: &ir::DefFun) {
-        // 1) create labels for all instructions we can jump to
-        let mut ins_targets: HashSet<usize> = HashSet::new();
-        for ins in fun.body().unwrap().iter() {
-            match ins {
-                ir::Ins::Jump(ins) => {
-                    ins_targets.insert(ins.label().0);
-                }
-                ir::Ins::Br(ins) => {
-                    ins_targets.insert(ins.label_true().0);
-                    ins_targets.insert(ins.label_false().0);
-                }
-                _ => {}
-            }
-        }
+    fn print_body(&self, writer: &mut dyn Write) {
+        let f = self.fun.unwrap();
+        let f_ex = self.fun_ex.unwrap();
 
-        self.local_labels = HashMap::new();
-        for (label_id, ins_id) in ins_targets.iter().enumerate() {
-            self.local_labels.insert(*ins_id, label_id);
-        }
-    }
-
-    fn print_fun(&mut self, f: &ir::DefFun, writer: &mut dyn Write) {
-        let body = f.body();
-        let fn_id = f.addr().0;
-        let fn_name = *self.fn_names.get(&fn_id).unwrap();
-        if !body.is_none() {
-            self.prepare_fun(f);
-        }
-
-        write!(writer, "define {} f{} ", fn_id, fn_name).unwrap();
-        match body {
-            Some(body) => {
-                write!(writer, "\n").unwrap();
-                self.print_body(body, writer);
-                write!(writer, "\n").unwrap();
-            }
-            _ => write!(writer, "extern\n").unwrap(),
-        }
-    }
-
-    fn print_body(&mut self, body: &Vec<ir::Ins>, writer: &mut dyn Write) {
-        for (id, ins) in body.iter().enumerate() {
-            if let Some(ins_label) = self.local_labels.get(&id) {
+        for (id, ins) in f.body().unwrap().iter().enumerate() {
+            if let Some(ins_label) = f_ex.label_of(ir::LocalLabel(id)) {
                 if id != 0 {
                     write!(writer, "\n").unwrap();
                 }
 
-                write!(writer, "L{}:\n", ins_label).unwrap();
+                write!(writer, "{}:\n", ins_label).unwrap();
             }
 
             write!(writer, "  ").unwrap();
@@ -175,16 +150,18 @@ impl IRPrinter {
     }
 
     fn print_ins_jump(&self, ins: &ir::InsJump, writer: &mut dyn Write) {
-        let label_id = self.local_labels.get(&ins.label().0).unwrap();
-        write!(writer, "jump L{}", label_id).unwrap();
+        let f_ex = self.fun_ex.unwrap();
+        let label_name = f_ex.label_of(ins.label()).unwrap();
+        write!(writer, "jump {}", label_name).unwrap();
     }
 
     fn print_ins_br(&self, ins: &ir::InsBr, writer: &mut dyn Write) {
-        let label_true = self.local_labels.get(&ins.label_true().0).unwrap();
-        let label_false = self.local_labels.get(&ins.label_false().0).unwrap();
+        let f_ex = self.fun_ex.unwrap();
+        let label_true = f_ex.label_of(ins.label_true()).unwrap();
+        let label_false = f_ex.label_of(ins.label_false()).unwrap();
         write!(
             writer,
-            "br %{}, L{}, L{}",
+            "br %{}, {}, {}",
             ins.src().0,
             label_true,
             label_false
@@ -193,8 +170,8 @@ impl IRPrinter {
     }
 
     fn print_ins_call(&self, ins: &ir::InsCall, writer: &mut dyn Write) {
-        let fn_name = self.fn_names.get(&ins.fun().0).unwrap();
-        write!(writer, "call %{}, f{}", ins.dst().0, fn_name).unwrap();
+        let fn_name = self.module_ex.get_fun(ins.fun()).name();
+        write!(writer, "call %{}, {}", ins.dst().0, fn_name).unwrap();
         for arg in ins.args() {
             write!(writer, ", %{}", arg.0).unwrap();
         }

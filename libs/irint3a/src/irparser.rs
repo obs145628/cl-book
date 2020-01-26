@@ -34,9 +34,9 @@ impl Parser {
         }
     }
 
-    pub fn parse(mut self) -> ir::Module {
+    pub fn parse(mut self) -> ir::ModuleExtended {
         self.r_file();
-        self.builder.finish()
+        self.builder.build()
     }
 
     //file: fundef* <<EOF>>
@@ -78,14 +78,12 @@ impl Parser {
     //
     // ins_sim: ins_movi | ins_movr | etc
     fn r_ins(&mut self) {
-        let mut label_str = String::new();
-
-        let label: Option<&str> = match self.ps.try_eat_id() {
-            Some(label) => {
-                label_str = label;
-                self.ps.eat_sym(":");
-                Some(&label_str)
-            }
+        let label_str: Option<String> = self.ps.try_eat_id();
+        if label_str.is_some() {
+            self.ps.eat_sym(":");
+        }
+        let label: Option<&str> = match &label_str {
+            Some(x) => Some(x),
             None => None,
         };
 

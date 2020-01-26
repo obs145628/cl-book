@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
+
 // Basic rules about the IR
 //
 // Registers:
@@ -42,19 +45,19 @@ pub enum Ins {
 }
 
 /// In the IR, registers are represented by a unique usize identifier
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct RegId(pub usize);
 
 /// Represent a label to an instruction in the current function
 /// Used for the br jump instructions, to refer to where we want to jump
 /// It's an index in the list of instructions of the function
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct LocalLabel(pub usize);
 
 /// Represent an address to a local or extern function
 /// Its actually the unique identifier of the function
 /// This address is always known (no resolving needed later)
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct FunAddress(pub usize);
 
 /// Instruction movi
@@ -400,5 +403,104 @@ impl Module {
 
     pub fn defs(&self) -> &Vec<DefFun> {
         &self.defs
+    }
+}
+
+/// Module with extra metadedata
+/// This are fur debug perposes, it contains function names
+pub struct ModuleExtended {
+    module: Module,
+    funs: HashMap<FunAddress, FunExtended>,
+}
+
+impl ModuleExtended {
+    pub fn new(module: Module, funs: HashMap<FunAddress, FunExtended>) -> Self {
+        let mut res = ModuleExtended { module, funs };
+        res.fill_funs();
+
+        for def in res.module.defs() {
+            let fn_ex = res.funs.get_mut(&def.addr()).unwrap();
+            fn_ex.fill(def);
+        }
+
+        res
+    }
+
+    pub fn module(&self) -> &Module {
+        &self.module
+    }
+
+    pub fn get_fun(&self, addr: FunAddress) -> &FunExtended {
+        self.funs.get(&addr).unwrap()
+    }
+
+    fn fill_funs(&mut self) {
+        let mut def_idx = 1;
+        for def in &self.module.defs {
+            if self.funs.get(&def.addr()).is_none() {
+                let fn_name = format!("f{}", def_idx);
+                def_idx += 1;
+                self.funs.insert(
+                    def.addr(),
+                    FunExtended::new(def.addr(), fn_name, HashMap::new()),
+                );
+            }
+        }
+    }
+}
+
+pub struct FunExtended {
+    addr: FunAddress,
+    name: String,
+    labels: HashMap<LocalLabel, String>,
+}
+
+impl FunExtended {
+    pub fn new(addr: FunAddress, name: String, labels: HashMap<LocalLabel, String>) -> Self {
+        FunExtended { addr, name, labels }
+    }
+
+    pub fn addr(&self) -> FunAddress {
+        self.addr
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn label_of(&self, id: LocalLabel) -> Option<&String> {
+        self.labels.get(&id)
+    }
+
+    // gives generated names (L1, L2, etc) to all instructions with a JUMP points
+    fn fill(&mut self, fun: &DefFun) {
+        if fun.body().is_none() {
+            return;
+        }
+
+        let mut need_labels = HashSet::new();
+
+        for ins in fun.body().unwrap() {
+            match ins {
+                Ins::Jump(ins) => {
+                    need_labels.insert(ins.label().0);
+                }
+                Ins::Br(ins) => {
+                    need_labels.insert(ins.label_true().0);
+                    need_labels.insert(ins.label_false().0);
+                }
+                _ => {}
+            }
+        }
+
+        let mut need_labels: Vec<usize> = need_labels.into_iter().collect();
+        need_labels.sort();
+
+        let mut label_idx = 1;
+        for ins_idx in need_labels {
+            let label_name = format!("L{}", label_idx);
+            label_idx += 1;
+            self.labels.insert(LocalLabel(ins_idx), label_name);
+        }
     }
 }

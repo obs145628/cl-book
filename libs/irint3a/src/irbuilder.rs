@@ -188,7 +188,8 @@ impl IRBuilder {
         self.local_defs.push(fun.unwrap());
     }
 
-    pub fn finish(mut self) -> ir::Module {
+    /// Completes the module, build and returns a fully functional ModuleExtended
+    pub fn build(mut self) -> ir::ModuleExtended {
         if self.current_fun.is_some() {
             panic!("Cannot complete modile, one function is still being defined");
         }
@@ -202,7 +203,15 @@ impl IRBuilder {
 
         let mut defs: Vec<ir::DefFun> = local_defs;
         defs.append(&mut self.extern_defs);
-        ir::Module::new(defs)
+        let module = ir::Module::new(defs);
+
+        let mut funs = HashMap::new();
+        for (fun_name, fun_addr) in self.defs_named {
+            let labels = HashMap::new();
+            funs.insert(fun_addr, ir::FunExtended::new(fun_addr, fun_name, labels));
+        }
+
+        ir::ModuleExtended::new(module, funs)
     }
 
     /// Append an instruction to the current function body
