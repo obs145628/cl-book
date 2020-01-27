@@ -126,7 +126,7 @@ impl<'a> IRPrinter<'a> {
             ins_name,
             ins.dst().0,
             ins.src1().0,
-            ins.scr2().0
+            ins.src2().0
         )
         .unwrap();
     }
@@ -144,7 +144,7 @@ impl<'a> IRPrinter<'a> {
             ins_name,
             ins.dst().0,
             ins.src1().0,
-            ins.scr2().0
+            ins.src2().0
         )
         .unwrap();
     }

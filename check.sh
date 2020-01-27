@@ -14,6 +14,7 @@ check_proj() {
     } fi
 }
 
+check_proj libs/interp_inirint3a
 check_proj libs/irint3a
 check_proj libs/lanexpr
 check_proj libs/oblexer

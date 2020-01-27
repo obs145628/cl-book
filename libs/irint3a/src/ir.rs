@@ -30,6 +30,7 @@ use std::collections::HashSet;
 // To refer to the function with the call instruction, we simply use it's function identifier
 
 /// Represent a simple IR instruction
+#[derive(Clone, Debug)]
 pub enum Ins {
     Movi(InsMovi),
     Movr(InsMovr),
@@ -213,7 +214,7 @@ impl InsOpbin {
         self.src1
     }
 
-    pub fn scr2(&self) -> RegId {
+    pub fn src2(&self) -> RegId {
         self.src2
     }
 }
@@ -259,7 +260,7 @@ impl InsCmpbin {
         self.src1
     }
 
-    pub fn scr2(&self) -> RegId {
+    pub fn src2(&self) -> RegId {
         self.src2
     }
 }
