@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::astcast::ASTStatic;
+use crate::astcast;
 use crate::nativedefs;
 
 use oblexer::token::Token;
@@ -228,12 +228,9 @@ impl Parser {
                     let args = self.r_expr_list(",");
                     self.ps.eat_sym(")");
 
-                    let name = match ASTStatic::resolve(&res) {
-                        ASTStatic::ExprId(x) => x,
-                        _ => panic!("r:expr: callee must be an id"),
-                    };
-
-                    res = ast::ASTExprCall::new(name, args);
+                    let ast_id =
+                        astcast::cast_to_expr_id(&*res).expect("r:expr: callee must be and id");
+                    res = ast::ASTExprCall::new(ast_id.name().to_string(), args);
                 }
 
                 _ => break,

@@ -1,73 +1,46 @@
 use crate::ast;
 
-pub enum ASTStatic {
-    DefArg,
-    DefFun,
-    DefVar,
-    ExprBlock,
-    ExprCall,
-    ExprConst(i32),
-    ExprId(String),
-    ExprIf,
-    ExprLet,
-    ExprWhile,
-    TypeName(String),
+struct CasterToExprId<'a> {
+    node: &'a dyn ast::ASTExpr,
+    res: Option<&'a ast::ASTExprId>,
 }
 
-impl ASTStatic {
-    pub fn resolve(node: &ast::ASTExprPtr) -> ASTStatic {
-        let mut v = ASTGetStatic { res: None };
-        node.accept(&mut v);
-        v.res.unwrap()
+impl<'a> CasterToExprId<'a> {
+    fn new(node: &'a dyn ast::ASTExpr) -> Self {
+        CasterToExprId { node, res: None }
+    }
+
+    fn run(mut self) -> Option<&'a ast::ASTExprId> {
+        self.node.accept(&mut self);
+        self.res
     }
 }
 
-struct ASTGetStatic {
-    res: Option<ASTStatic>,
-}
-
-impl ast::ASTVisitor for ASTGetStatic {
-    fn visit_def_arg(&mut self, _: &ast::ASTDefArg) {
-        self.res = Some(ASTStatic::DefArg);
+impl<'a> ast::ASTVisitor for CasterToExprId<'a> {
+    fn visit_def_arg(&mut self, _node: &ast::ASTDefArg) {
+        unreachable!();
+    }
+    fn visit_def_fun(&mut self, _node: &ast::ASTDefFun) {
+        unreachable!();
     }
 
-    fn visit_def_fun(&mut self, _: &ast::ASTDefFun) {
-        self.res = Some(ASTStatic::DefFun);
+    fn visit_def_var(&mut self, _node: &ast::ASTDefVar) {
+        unreachable!();
     }
-
-    fn visit_def_var(&mut self, _: &ast::ASTDefVar) {
-        self.res = Some(ASTStatic::DefVar);
-    }
-
-    fn visit_expr_block(&mut self, _: &ast::ASTExprBlock) {
-        self.res = Some(ASTStatic::ExprBlock);
-    }
-
-    fn visit_expr_call(&mut self, _: &ast::ASTExprCall) {
-        self.res = Some(ASTStatic::ExprCall);
-    }
-
-    fn visit_expr_const(&mut self, node: &ast::ASTExprConst) {
-        self.res = Some(ASTStatic::ExprConst(node.val()));
-    }
-
+    fn visit_expr_block(&mut self, _node: &ast::ASTExprBlock) {}
+    fn visit_expr_call(&mut self, _node: &ast::ASTExprCall) {}
+    fn visit_expr_const(&mut self, _node: &ast::ASTExprConst) {}
     fn visit_expr_id(&mut self, node: &ast::ASTExprId) {
-        self.res = Some(ASTStatic::ExprId(node.name().to_string()));
+        let node = unsafe { std::mem::transmute::<&ast::ASTExprId, &'a ast::ASTExprId>(node) };
+        self.res = Some(node);
     }
+    fn visit_expr_if(&mut self, _node: &ast::ASTExprIf) {}
+    fn visit_expr_let(&mut self, _node: &ast::ASTExprLet) {}
+    fn visit_expr_while(&mut self, _node: &ast::ASTExprWhile) {}
+    fn visit_type_name(&mut self, _node: &ast::ASTTypeName) {}
+}
 
-    fn visit_expr_if(&mut self, _: &ast::ASTExprIf) {
-        self.res = Some(ASTStatic::ExprIf);
-    }
-
-    fn visit_expr_let(&mut self, _: &ast::ASTExprLet) {
-        self.res = Some(ASTStatic::ExprLet);
-    }
-
-    fn visit_expr_while(&mut self, _: &ast::ASTExprWhile) {
-        self.res = Some(ASTStatic::ExprWhile);
-    }
-
-    fn visit_type_name(&mut self, node: &ast::ASTTypeName) {
-        self.res = Some(ASTStatic::TypeName(node.name().to_string()));
-    }
+pub fn cast_to_expr_id<'a>(node: &'a dyn ast::ASTExpr) -> Option<&'a ast::ASTExprId> {
+    let caster = CasterToExprId::new(node);
+    caster.run()
 }
