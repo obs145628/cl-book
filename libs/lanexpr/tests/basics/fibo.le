@@ -38,9 +38,10 @@ let
 	var cpy_b : int = 0
       in (
 	while x > 0 do (
-	  cpy_b = a;
+	  cpy_b = b;
 	  b = a + b;
-	  a = cpy_b
+	  a = cpy_b;
+	  x = x - 1
 	);
 	a
       )

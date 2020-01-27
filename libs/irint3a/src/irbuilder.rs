@@ -91,6 +91,15 @@ impl FunBuilder {
         }
     }
 
+    fn get_last_pos(&self) -> ir::LocalLabel {
+        assert!(self.code.len() > 0);
+        ir::LocalLabel(self.code.len() - 1)
+    }
+
+    fn get_next_pos(&self) -> ir::LocalLabel {
+        ir::LocalLabel(self.code.len())
+    }
+
     fn add_ins(&mut self, ins: UnresolvedIns, label: Option<&str>) {
         if let Some(label_name) = label {
             let label = ir::LocalLabel(self.code.len());
@@ -212,6 +221,16 @@ impl IRBuilder {
         }
 
         ir::ModuleExtended::new(module, funs)
+    }
+
+    /// Returns the LocalLabel of the last inserted instruction
+    pub fn get_last_pos(&self) -> ir::LocalLabel {
+        self.current_fun.as_ref().unwrap().get_last_pos()
+    }
+
+    /// Returns the LocalLabel of one past the last inserted instruction
+    pub fn get_next_pos(&self) -> ir::LocalLabel {
+        self.current_fun.as_ref().unwrap().get_next_pos()
     }
 
     /// Append an instruction to the current function body
@@ -353,6 +372,10 @@ impl IRBuilder {
         );
     }
 
+    pub fn ins_jump_pos(&mut self, jump_pos: ir::LocalLabel, label: Option<&str>) {
+        self.append_ins(ir::Ins::Jump(ir::InsJump::new(jump_pos)), label);
+    }
+
     pub fn ins_br(
         &mut self,
         src: ir::RegId,
@@ -368,6 +391,16 @@ impl IRBuilder {
             }),
             label,
         );
+    }
+
+    pub fn ins_br_pos(
+        &mut self,
+        src: ir::RegId,
+        pos_true: ir::LocalLabel,
+        pos_false: ir::LocalLabel,
+        label: Option<&str>,
+    ) {
+        self.append_ins(ir::Ins::Br(ir::InsBr::new(src, pos_true, pos_false)), label);
     }
 
     pub fn ins_call_name(

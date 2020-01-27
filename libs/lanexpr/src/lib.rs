@@ -35,6 +35,18 @@ mod tests {
         tc.check(&ast);
     }
 
+    fn check_gen_irint3a(path: &str) {
+        let mut ps = parser::Parser::new_from_file(path);
+        let ast = ps.parse();
+
+        let mut tc = typecheck::TypeCheck::new();
+        tc.check(&ast);
+        let ba = tc.get_bindings();
+
+        let tr = translater::irint3a::Translater::new(&ast, &ba);
+        let _code = tr.translate();
+    }
+
     fn list_files(dir: &str) -> Vec<String> {
         fs::read_dir(dir)
             .unwrap()
@@ -69,6 +81,15 @@ mod tests {
         for f in files {
             println!("running {}...", f);
             check_type(&f);
+        }
+    }
+
+    #[test]
+    fn test_gen_irint3a_basics() {
+        let files = list_files("./tests/basics/");
+        for f in files {
+            println!("running {}...", f);
+            check_gen_irint3a(&f);
         }
     }
 }

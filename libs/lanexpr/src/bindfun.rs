@@ -56,6 +56,25 @@ impl BindFun {
         self.ast_id.is_none()
     }
 
+    pub fn vars(&self) -> &Vec<BindVar> {
+        self.vars.get_vars()
+    }
+
+    /// Returns the total number of variables (arguments + locals defs)
+    pub fn count_variables(&self) -> usize {
+        self.vars.get_vars().len()
+    }
+
+    /// Returns the number of function arguments
+    pub fn count_args(&self) -> usize {
+        self.ty.args().len()
+    }
+
+    /// Returns the number of local variables, without couting the functioon arguments
+    pub fn count_locals(&self) -> usize {
+        self.count_variables() - self.count_args()
+    }
+
     pub fn dump_bindings(&self) {
         let code_kind = if self.is_native() { "NATIVE" } else { "USER" };
         println!(
