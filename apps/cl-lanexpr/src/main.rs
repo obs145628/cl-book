@@ -26,6 +26,11 @@ fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
     code.print_code(&mut std::io::stdout());
 }
 
+fn gen_llvm_ir(root: &ast::ASTExprPtr, ba: &BindApp) {
+    let tr = translater::llvmtl::Translater::new(root, ba);
+    tr.translate();
+}
+
 fn main() {
     let matches = App::new("cl-lanexpr")
         .version("0.1.0")
@@ -56,6 +61,11 @@ fn main() {
                 .long("gen-irint3a")
                 .help("Generate IR code for irint3a"),
         )
+        .arg(
+            Arg::with_name("gen-llvm")
+                .long("gen-llvm")
+                .help("Generate LLVM IR code"),
+        )
         .get_matches();
 
     let input_path = matches.value_of("INPUT").unwrap();
@@ -73,5 +83,9 @@ fn main() {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);
         gen_irint3a(&ast, &ati);
+    } else if matches.occurrences_of("gen-llvm") > 0 {
+        let ast = do_parse(input_path);
+        let ati = do_typecheck(&ast);
+        gen_llvm_ir(&ast, &ati);
     }
 }

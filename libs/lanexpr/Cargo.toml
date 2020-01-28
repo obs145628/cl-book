@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1.4.0"
+llvm-sys = "90.0.0"
 oblexer = { path = "../oblexer/" }
 obparser = { path = "../obparser/" }
 obuid = { path = "../obuid/" }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use irint3a::ir;
 use irint3a::irbuilder::IRBuilder;
 
@@ -8,65 +10,7 @@ use crate::bindapp::BindApp;
 use crate::bindfun::{BindFun, BindFunId};
 use crate::bindvar::BindVarId;
 use crate::nativedefs;
-
-use std::collections::HashMap;
-
-struct DefFunsFinder<'a> {
-    root: &'a ast::ASTExprPtr,
-    res: Vec<&'a ast::ASTDefFun>,
-}
-
-impl<'a> DefFunsFinder<'a> {
-    pub fn new(root: &'a ast::ASTExprPtr) -> Self {
-        DefFunsFinder { root, res: vec![] }
-    }
-
-    pub fn run(mut self) -> Vec<&'a ast::ASTDefFun> {
-        self.root.accept(&mut self);
-        self.res
-    }
-}
-
-impl<'a> ast::ASTVisitor for DefFunsFinder<'a> {
-    fn visit_def_arg(&mut self, node: &ast::ASTDefArg) {
-        node.accept_children(self);
-    }
-
-    fn visit_def_fun(&mut self, node: &ast::ASTDefFun) {
-        node.accept_children(self);
-        let node = unsafe { std::mem::transmute::<&ast::ASTDefFun, &'a ast::ASTDefFun>(node) };
-        self.res.push(node);
-    }
-
-    fn visit_def_var(&mut self, node: &ast::ASTDefVar) {
-        node.accept_children(self);
-    }
-    fn visit_expr_block(&mut self, node: &ast::ASTExprBlock) {
-        node.accept_children(self);
-    }
-
-    fn visit_expr_call(&mut self, node: &ast::ASTExprCall) {
-        node.accept_children(self);
-    }
-    fn visit_expr_const(&mut self, node: &ast::ASTExprConst) {
-        node.accept_children(self);
-    }
-    fn visit_expr_id(&mut self, node: &ast::ASTExprId) {
-        node.accept_children(self);
-    }
-    fn visit_expr_if(&mut self, node: &ast::ASTExprIf) {
-        node.accept_children(self);
-    }
-    fn visit_expr_let(&mut self, node: &ast::ASTExprLet) {
-        node.accept_children(self);
-    }
-    fn visit_expr_while(&mut self, node: &ast::ASTExprWhile) {
-        node.accept_children(self);
-    }
-    fn visit_type_name(&mut self, node: &ast::ASTTypeName) {
-        node.accept_children(self);
-    }
-}
+use crate::translater::defslist;
 
 enum ExprVal {
     NoVal,             //the expression return type is void
@@ -124,10 +68,7 @@ impl<'a> Translater<'a> {
         self.add_native_defs();
 
         // 2) List all user functions
-        let fun_defs = {
-            let get_fun = DefFunsFinder::new(self.root);
-            get_fun.run()
-        };
+        let fun_defs = defslist::list_fun_defs(&**self.root);
 
         // 3) define IR names for all user functions, and the user main function
         let main_bind = self
