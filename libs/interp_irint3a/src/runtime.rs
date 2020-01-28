@@ -218,7 +218,7 @@ impl Runtime {
 
     fn exec_ins(&mut self, ins: ir::Ins) {
         /*
-            println!(
+        println!(
                 "exec ins {:?} at {:?}",
                 ins,
                 self.call_stack.last().unwrap()

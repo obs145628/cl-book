@@ -42,12 +42,15 @@ let
 	);
 	res
       )
-	
-
 
 in
   let var i : int = 0 in while i < 10 do (
-      printnl_int(fact_rec(i));
+      print_int(i);
+      putc(58);
+      putc(32);
+      print_int(fact_rec(i));
+      putc(44);
+      putc(32);
       printnl_int(fact_iter(i));
       i = i + 1
     )

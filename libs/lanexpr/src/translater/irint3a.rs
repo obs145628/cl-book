@@ -154,6 +154,9 @@ impl<'a> Translater<'a> {
             self.tl_fun(def.body());
         }
 
+        // 6) Generate code for the start function
+        self.gen_start_fun();
+
         self.builder.build()
     }
 
@@ -227,8 +230,25 @@ impl<'a> Translater<'a> {
         self.builder.end_function();
     }
 
+    fn gen_start_fun(&mut self) {
+        self.builder
+            .begin_function(Some("_start"), Some(ir::FunAddress(0)));
+
+        // Call user main function
+        self.builder
+            .ins_call_name(ir::RegId(0), "_f1_main", vec![], None);
+
+        //Call extern exit function with argument 0
+        self.builder.ins_movi(ir::RegId(0), 0, None);
+        self.builder
+            .ins_call_addr(ir::RegId(0), ir::FunAddress(258), vec![ir::RegId(0)], None);
+
+        self.builder.ins_ret(ir::RegId(0), None);
+        self.builder.end_function();
+    }
+
     fn add_standard_fn(&mut self, name: &str, ir_addr: ir::FunAddress) {
-        let bind_id = self.app.get_fun_from_native_name("putc").id();
+        let bind_id = self.app.get_fun_from_native_name(name).id();
         let ir_name = format!("_std_{}", name);
         self.builder.add_extern_fun(Some(&ir_name), ir_addr);
         self.ir_fun_names.insert(bind_id, ir_name);
@@ -236,6 +256,8 @@ impl<'a> Translater<'a> {
 
     fn add_native_defs(&mut self) {
         self.add_standard_fn("putc", ir::FunAddress(257));
+        self.builder
+            .add_extern_fun(Some("exit"), ir::FunAddress(258));
     }
 
     fn alloc_reg(&mut self) -> ir::RegId {

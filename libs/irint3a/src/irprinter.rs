@@ -134,7 +134,7 @@ impl<'a> IRPrinter<'a> {
     fn print_ins_cmpbin(&self, ins: &ir::InsCmpbin, writer: &mut dyn Write) {
         let ins_name = match ins.kind() {
             ir::InsCmpbinKind::Eq => "cmpeq",
-            ir::InsCmpbinKind::Gt => "cpmgt",
+            ir::InsCmpbinKind::Gt => "cmpgt",
             ir::InsCmpbinKind::Lt => "cmplt",
         };
 
