@@ -388,6 +388,10 @@ impl DefFun {
     pub fn body(&self) -> Option<&Vec<Ins>> {
         self.body.as_ref()
     }
+
+    pub fn is_extern(&self) -> bool {
+        self.body.is_none()
+    }
 }
 
 /// A module represent the whole definition of an IR file
@@ -395,15 +399,32 @@ impl DefFun {
 /// A module must have a function wirh id 0, this is the entry point
 pub struct Module {
     defs: Vec<DefFun>,
+    defs_mapping: HashMap<usize, usize>,
 }
 
 impl Module {
     pub fn new(defs: Vec<DefFun>) -> Self {
-        Module { defs }
+        let mut res = Module {
+            defs,
+            defs_mapping: HashMap::new(),
+        };
+        res.init();
+        res
     }
 
     pub fn defs(&self) -> &Vec<DefFun> {
         &self.defs
+    }
+
+    pub fn get_fun(&self, addr: FunAddress) -> Option<&DefFun> {
+        let fun_idx = self.defs_mapping.get(&addr.0)?;
+        self.defs.get(*fun_idx)
+    }
+
+    fn init(&mut self) {
+        for (idx, fun) in self.defs.iter().enumerate() {
+            self.defs_mapping.insert(fun.addr().0, idx);
+        }
     }
 }
 
@@ -429,6 +450,10 @@ impl ModuleExtended {
 
     pub fn module(&self) -> &Module {
         &self.module
+    }
+
+    pub fn keep_module(self) -> Module {
+        self.module
     }
 
     pub fn get_fun(&self, addr: FunAddress) -> &FunExtended {

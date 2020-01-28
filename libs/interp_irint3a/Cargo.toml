@@ -1,5 +1,5 @@
 [package]
-name = "interp_inirint3a"
+name = "interp_irint3a"
 version = "0.1.0"
 authors = ["Steven Lariau <obs145628@gmail.com>"]
 edition = "2018"

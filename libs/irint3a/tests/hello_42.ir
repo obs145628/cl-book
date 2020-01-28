@@ -1,9 +1,15 @@
 
 define 257 _putchar extern
 
+define 258 _exit extern
+
 define 0 _main
   movi %1, 42
   call %0, _iprint, %1
+  movi %1, 10
+  call %0, _putchar, %1
+  movi %1, 0
+  call %0, _exit, %1
   ret %0
 
 define 1 _iprint_rec
