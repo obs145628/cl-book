@@ -6,8 +6,9 @@ These representations will be a lot simpler and with much less features than for
 
 # Requirements
 
-Only Rust.  
-Tested with rustc 1.40.0 on Ubuntu 18.04
+- Rust (Tested with rustc 1.40.0)
+- LLVM (Tested with v9.0.0) (some compilers generate LLVM IR)
+Tested on Ubuntu 18.04
 
 # Front-End languages
 
@@ -38,6 +39,10 @@ Projects:
 - `./libs/irint3a`
 - `./apps/irint3a-utils`
 
+## LLVM IR
+
+Some compilers generate LLVM IR code.
+
 
 # Testing
 
@@ -46,3 +51,5 @@ This script build and test all projects:
 ```shell
 ./check.sh
 ```
+
+You can just do the building by using --only-build

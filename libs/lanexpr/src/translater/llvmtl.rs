@@ -25,6 +25,7 @@ fn build_zstring(s: &str) -> Vec<u8> {
 pub struct Translater<'a> {
     root: &'a ast::ASTExprPtr,
     app: &'a BindApp,
+    out_ll_path: Option<String>,
 
     //fields about the current function being translated
     act_fun_node: Option<&'a ast::ASTDefFun>,
@@ -44,6 +45,7 @@ impl<'a> Translater<'a> {
         Translater {
             root,
             app,
+            out_ll_path: None,
 
             act_fun_node: None,
             act_fun_bind: None,
@@ -57,11 +59,12 @@ impl<'a> Translater<'a> {
         }
     }
 
-    /// Perform the translation of the whole program and output LLVM IR code to stdout
-    /// Must be called only once
+    /// Perform the translation of the whole program, can be called only once
+    /// By default, LLVM ir code is dumped to stdout
+    /// Call set_output_ll_path() before to save the LLVM IR code into a file
     pub fn translate(mut self) {
         // 1) Init translation
-        self.init_llvm();
+        self.llvm_init();
 
         // 2) Create native definitons
         self.add_native_defs();
@@ -95,7 +98,11 @@ impl<'a> Translater<'a> {
         self.save_llvm_ir();
 
         // 7) Finish translation
-        self.clean_llvm();
+        self.llvm_clean();
+    }
+
+    pub fn set_output_ll_path(&mut self, path: &str) {
+        self.out_ll_path = Some(path.to_string());
     }
 
     fn add_native_defs(&mut self) {
@@ -127,24 +134,17 @@ impl<'a> Translater<'a> {
     }
 
     fn tl_fun(&mut self, body: &ast::ASTExprPtr) {
-        let fn_bind = self.act_fun_bind.unwrap();
-        let nb_args = fn_bind.count_args();
+        let fun_bind = self.act_fun_bind.unwrap();
+        let fun = *self.llvm_funs.get_mut(&fun_bind.id()).unwrap();
+        let nb_args = fun_bind.count_args();
 
         // 1) Init function
-        //TODO: should clean this
-        let fun = *self.llvm_funs.get_mut(&fn_bind.id()).unwrap();
-        unsafe {
-            let bb = llvm::core::LLVMAppendBasicBlockInContext(
-                self.llvm_ctx,
-                fun,
-                b"entry\0".as_ptr() as *const _,
-            );
-            llvm::core::LLVMPositionBuilderAtEnd(self.llvm_builder, bb);
-        }
+        let bb = self.llvm_bb_create(fun);
+        self.llvm_bb_set_current(bb);
 
         // 2) Allocate memory for all arguments and local variables
         let mut locals_addrs = vec![];
-        for var_bind in fn_bind.vars() {
+        for var_bind in fun_bind.vars() {
             let var_ty = self.llvm_type_i32();
             let addr = self.llvm_ins_alloca(var_ty);
             locals_addrs.push(addr);
@@ -159,7 +159,7 @@ impl<'a> Translater<'a> {
 
         // 4) Gen function body and return instruction
         let body_val = self.tl_expr(&**body);
-        if fn_bind.ty().ret().is_void() {
+        if fun_bind.ty().ret().is_void() {
             self.llvm_ins_ret_void();
         } else {
             self.llvm_ins_ret(body_val);
@@ -196,6 +196,7 @@ impl<'a> Translater<'a> {
         self.llvm_ins_call(callee_fun, args)
     }
 
+    // Generate an icmp <op> instruction (returns i1), followed by zext to i32
     fn icmp_zext(
         &mut self,
         op: llvm::LLVMIntPredicate,
@@ -253,7 +254,14 @@ impl<'a> Translater<'a> {
         }
     }
 
-    fn init_llvm(&mut self) {
+    fn save_llvm_ir(&mut self) {
+        match self.out_ll_path.clone() {
+            Some(out_path) => self.llvm_mod_dump_to_file(&out_path),
+            None => self.llvm_mod_dump_stdout(),
+        }
+    }
+
+    fn llvm_init(&mut self) {
         unsafe {
             self.llvm_ctx = llvm::core::LLVMContextCreate();
             self.llvm_mod = llvm::core::LLVMModuleCreateWithNameInContext(
@@ -264,7 +272,7 @@ impl<'a> Translater<'a> {
         }
     }
 
-    fn clean_llvm(&mut self) {
+    fn llvm_clean(&mut self) {
         unsafe {
             llvm::core::LLVMDisposeBuilder(self.llvm_builder);
             llvm::core::LLVMDisposeModule(self.llvm_mod);
@@ -272,9 +280,20 @@ impl<'a> Translater<'a> {
         }
     }
 
-    fn save_llvm_ir(&mut self) {
+    fn llvm_mod_dump_stdout(&mut self) {
         unsafe {
             llvm::core::LLVMDumpModule(self.llvm_mod);
+        }
+    }
+
+    fn llvm_mod_dump_to_file(&mut self, path: &str) {
+        let path = build_zstring(path);
+        unsafe {
+            llvm::core::LLVMPrintModuleToFile(
+                self.llvm_mod,
+                path.as_ptr() as *const _,
+                ptr::null_mut(),
+            );
         }
     }
 
@@ -389,6 +408,45 @@ impl<'a> Translater<'a> {
         unsafe { llvm::core::LLVMBuildZExt(self.llvm_builder, val, ty, b"\0".as_ptr() as *const _) }
     }
 
+    fn llvm_ins_cond_br(
+        &mut self,
+        cond: LLVMValueRef,
+        bb_if: LLVMBasicBlockRef,
+        bb_else: LLVMBasicBlockRef,
+    ) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildCondBr(self.llvm_builder, cond, bb_if, bb_else) }
+    }
+
+    fn llvm_ins_br(&mut self, dst: LLVMBasicBlockRef) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildBr(self.llvm_builder, dst) }
+    }
+
+    fn llvm_ins_phi(
+        &mut self,
+        in_vals: &[LLVMValueRef],
+        in_blocks: &[LLVMBasicBlockRef],
+    ) -> LLVMValueRef {
+        assert!(in_vals.len() == in_blocks.len());
+        let mut in_vals = Vec::from(in_vals);
+        let mut in_blocks = Vec::from(in_blocks);
+        let phi_ty = self.llvm_type_i32();
+
+        let phi_node = unsafe {
+            llvm::core::LLVMBuildPhi(self.llvm_builder, phi_ty, b"\0".as_ptr() as *const _)
+        };
+
+        unsafe {
+            llvm::core::LLVMAddIncoming(
+                phi_node,
+                in_vals.as_mut_ptr(),
+                in_blocks.as_mut_ptr(),
+                in_vals.len() as u32,
+            );
+        }
+
+        phi_node
+    }
+
     fn llvm_val_const_i32(&mut self, val: i32) -> LLVMValueRef {
         let ty = self.llvm_type_i32();
         unsafe { llvm::core::LLVMConstInt(ty, val as u64, 0) }
@@ -396,6 +454,26 @@ impl<'a> Translater<'a> {
 
     fn llvm_val_fun_arg(&mut self, fun: LLVMValueRef, idx: usize) -> LLVMValueRef {
         unsafe { llvm::core::LLVMGetParam(fun, idx as u32) }
+    }
+
+    fn llvm_bb_create(&mut self, fun: LLVMValueRef) -> LLVMBasicBlockRef {
+        unsafe {
+            llvm::core::LLVMAppendBasicBlockInContext(
+                self.llvm_ctx,
+                fun,
+                b"\0".as_ptr() as *const _,
+            )
+        }
+    }
+
+    fn llvm_bb_get_current(&mut self) -> LLVMBasicBlockRef {
+        unsafe { llvm::core::LLVMGetInsertBlock(self.llvm_builder) }
+    }
+
+    fn llvm_bb_set_current(&mut self, bb: LLVMBasicBlockRef) {
+        unsafe {
+            llvm::core::LLVMPositionBuilderAtEnd(self.llvm_builder, bb);
+        };
     }
 }
 
@@ -427,8 +505,6 @@ impl<'a> ast::ASTVisitor for Translater<'a> {
     }
 
     fn visit_expr_call(&mut self, node: &ast::ASTExprCall) {
-        //TODO
-
         if node.name() == "@op:set" {
             //special case for set operator, cannot simply compute operands
             self.tl_call_set(node);
@@ -456,11 +532,42 @@ impl<'a> ast::ASTVisitor for Translater<'a> {
     }
 
     fn visit_expr_if(&mut self, node: &ast::ASTExprIf) {
-        //TODO
+        let fun_bind = self.act_fun_bind.unwrap();
+        let fun = *self.llvm_funs.get_mut(&fun_bind.id()).unwrap();
+        let is_void = fun_bind.get_type_of_exp(node).unwrap().is_void();
+
+        // 1) Create basic blocks
+        let mut bb_if = self.llvm_bb_create(fun);
+        let mut bb_else = self.llvm_bb_create(fun);
+        let bb_end = self.llvm_bb_create(fun);
+
+        // 2) Create condition code
         let val_cond = self.tl_expr(&**node.cond());
+        let val0 = self.llvm_val_const_i32(0);
+        let bit_cond = self.llvm_ins_icmp(llvm::LLVMIntPredicate::LLVMIntNE, val_cond, val0);
+        self.llvm_ins_cond_br(bit_cond, bb_if, bb_else);
+
+        // 3) Create if block
+        self.llvm_bb_set_current(bb_if);
         let val_if = self.tl_expr(&**node.val_if());
+        self.llvm_ins_br(bb_end);
+        bb_if = self.llvm_bb_get_current();
+
+        // 4) Create else block
+        self.llvm_bb_set_current(bb_else);
         let val_else = self.tl_expr(&**node.val_else());
-        self.node_val = Some(self.llvm_val_const_i32(0));
+        self.llvm_ins_br(bb_end);
+        bb_else = self.llvm_bb_get_current();
+
+        // 5) Create end block
+        self.llvm_bb_set_current(bb_end);
+        let res = if is_void {
+            self.llvm_val_const_i32(0)
+        } else {
+            self.llvm_ins_phi(&[val_if, val_else], &[bb_if, bb_else])
+        };
+
+        self.node_val = Some(res);
     }
 
     fn visit_expr_let(&mut self, node: &ast::ASTExprLet) {
@@ -472,9 +579,32 @@ impl<'a> ast::ASTVisitor for Translater<'a> {
     }
 
     fn visit_expr_while(&mut self, node: &ast::ASTExprWhile) {
-        //TODO
+        let fun_bind = self.act_fun_bind.unwrap();
+        let fun = *self.llvm_funs.get_mut(&fun_bind.id()).unwrap();
+
+        // 1) Create basic blocks
+        let bb_cond = self.llvm_bb_create(fun);
+        let bb_body = self.llvm_bb_create(fun);
+        let bb_end = self.llvm_bb_create(fun);
+
+        // 2) End current block by jumping to the condition
+        self.llvm_ins_br(bb_cond);
+
+        // 3) Generate condition block with conditional branching
+        self.llvm_bb_set_current(bb_cond);
         let val_cond = self.tl_expr(&**node.cond());
-        let val_body = self.tl_expr(&**node.body());
+        let val0 = self.llvm_val_const_i32(0);
+        let bit_cond = self.llvm_ins_icmp(llvm::LLVMIntPredicate::LLVMIntNE, val_cond, val0);
+        self.llvm_ins_cond_br(bit_cond, bb_body, bb_end);
+
+        // 4) Generate the body block with jump to the condition
+        self.llvm_bb_set_current(bb_body);
+        let _val_body = self.tl_expr(&**node.body());
+        self.llvm_ins_br(bb_cond);
+
+        // 5) Generate the end block after the loop
+        self.llvm_bb_set_current(bb_end);
+
         self.node_val = Some(self.llvm_val_const_i32(0));
     }
 

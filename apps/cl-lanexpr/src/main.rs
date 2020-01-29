@@ -26,8 +26,11 @@ fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
     code.print_code(&mut std::io::stdout());
 }
 
-fn gen_llvm_ir(root: &ast::ASTExprPtr, ba: &BindApp) {
-    let tr = translater::llvmtl::Translater::new(root, ba);
+fn gen_llvm_ir(root: &ast::ASTExprPtr, ba: &BindApp, out_path: Option<&str>) {
+    let mut tr = translater::llvmtl::Translater::new(root, ba);
+    if let Some(out_path) = out_path {
+        tr.set_output_ll_path(out_path);
+    }
     tr.translate();
 }
 
@@ -40,6 +43,14 @@ fn main() {
             Arg::with_name("INPUT")
                 .help("Set the input file")
                 .required(true),
+        )
+        .arg(
+            Arg::with_name("OUTPUT")
+                .short("o")
+                .long("output")
+                .value_name("FILE")
+                .help("Set the program output file")
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("stage-parse")
@@ -69,6 +80,7 @@ fn main() {
         .get_matches();
 
     let input_path = matches.value_of("INPUT").unwrap();
+    let output_path = matches.value_of("OUTPUT");
 
     if matches.occurrences_of("stage-parse") > 0 {
         do_parse(input_path);
@@ -86,6 +98,6 @@ fn main() {
     } else if matches.occurrences_of("gen-llvm") > 0 {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);
-        gen_llvm_ir(&ast, &ati);
+        gen_llvm_ir(&ast, &ati, output_path);
     }
 }

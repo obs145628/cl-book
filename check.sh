@@ -2,11 +2,19 @@
 
 # Basic script to run cargo build and cargo test on all projects
 
+CMD="cargo build && cargo test"
+if [[ $* == *--only-build* ]]; then {
+  CMD="cargo build"
+} fi
+
+
+
 check_proj() {
     (
 	echo "Testing $1 ..."
 	cd ./$1;
-	cargo build && cargo test
+	eval $CMD
+
     )
     if [ $? -ne 0 ]; then {
 	echo "Tests failed for project $1";

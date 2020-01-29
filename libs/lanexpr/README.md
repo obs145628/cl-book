@@ -25,6 +25,7 @@ Perform semantic analysis: check if the code is correct, and generate symbol tab
 Lower the AST into an IR representation.  
 Can be converted into multiple representations:
 - irint3a
+- LLVM IR
 
 
 # Standard library
