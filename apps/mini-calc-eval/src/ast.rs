@@ -47,16 +47,6 @@ impl ASTBinopOp {
             ASTBinopOp::Div => '/',
         }
     }
-
-    fn fromc(c: char) -> ASTBinopOp {
-        match c {
-            '+' => ASTBinopOp::Add,
-            '-' => ASTBinopOp::Sub,
-            '*' => ASTBinopOp::Mul,
-            '/' => ASTBinopOp::Div,
-            _ => panic!("Invalid char for binop '{}'.", c),
-        }
-    }
 }
 
 pub struct ASTBinOp {

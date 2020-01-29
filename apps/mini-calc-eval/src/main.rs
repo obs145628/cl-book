@@ -4,23 +4,35 @@ mod value;
 
 use std::env;
 
-fn main() {
-    match env::args().nth(1) {
-        None => {
-            println!("Usage: {} <expr>", env::args().next().unwrap());
-        }
+fn eval_parser(expr: &str) -> value::Value {
+    parser::ParserEval::new_from_file("");
+    let mut ps = parser::ParserEval::new_from_str(&expr);
+    ps.eval()
+}
 
-        Some(expr) => {
-            let ca = parser::ParserAST::new_from_str(&expr).build();
-            ca.dump();
-            println!("");
+fn eval_ast(expr: &str) -> value::Value {
+    parser::ParserAST::new_from_file("");
+    let ca = parser::ParserAST::new_from_str(&expr).build();
+    ca.dump();
+    println!("");
+    ast::ASTEval::eval(&*ca)
+}
 
-            match ast::ASTEval::eval(&*ca) {
-                value::Value::VInt(x) => println!("{}", x),
-                value::Value::VFloat(x) => println!("{}", x),
-            }
-        }
+fn print_result(val: value::Value) {
+    match val {
+        value::Value::VInt(x) => println!("{}", x),
+        value::Value::VFloat(x) => println!("{}", x),
     }
+}
+
+fn main() {
+    let expr = env::args().nth(1).expect("Usage: ./mini-calc-eval <expr>");
+
+    println!("Using eval parser:");
+    print_result(eval_parser(&expr));
+
+    println!("Using AST parser:");
+    print_result(eval_ast(&expr));
 }
 
 #[cfg(test)]

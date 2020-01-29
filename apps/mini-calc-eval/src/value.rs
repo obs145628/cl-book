@@ -12,13 +12,6 @@ impl Value {
         }
     }
 
-    pub fn is_float(&self) -> bool {
-        match self {
-            Value::VFloat(_) => true,
-            _ => false,
-        }
-    }
-
     pub fn get_float(&self) -> f64 {
         match self {
             Value::VInt(x) => *x as f64,
