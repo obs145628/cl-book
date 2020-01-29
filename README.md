@@ -39,9 +39,19 @@ Projects:
 - `./libs/irint3a`
 - `./apps/irint3a-utils`
 
+## irintsm
+
+Really similar to irint3a, except that it's based on a stack-machine and doesn't have any registers
+
+Projects:
+- `./libs/irintsm`
+
 ## LLVM IR
 
 Some compilers generate LLVM IR code.
+
+Projects:
+- `./libs/lanexpr`
 
 
 # Testing
