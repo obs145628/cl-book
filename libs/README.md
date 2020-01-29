@@ -1,3 +1,8 @@
+# clangutils
+
+Library to create object, lib and binary files using clang compiler.  
+I use it to compile the LLVM IR files I generate.
+
 # interp_irint3a
 
 Interpreter for the irint3a IR

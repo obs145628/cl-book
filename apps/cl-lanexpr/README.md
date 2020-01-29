@@ -6,6 +6,7 @@ Can perform many operations:
 - build and print the symbol tables from a file
 - convert the input to irint3a and print the IR
 - convert the input to LLVM IR
+- compile to a standalone binary (using LLVM IR)
 
 For more details:
 ```shell

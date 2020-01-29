@@ -22,6 +22,7 @@ check_proj() {
     } fi
 }
 
+check_proj libs/clangutils
 check_proj libs/interp_irint3a
 check_proj libs/irint3a
 check_proj libs/lanexpr

@@ -77,6 +77,11 @@ fn main() {
                 .long("gen-llvm")
                 .help("Generate LLVM IR code"),
         )
+        .arg(
+            Arg::with_name("bin-llvm")
+                .long("bin-llvm")
+                .help("Create an executable by generating LLVM IR"),
+        )
         .get_matches();
 
     let input_path = matches.value_of("INPUT").unwrap();
@@ -99,5 +104,10 @@ fn main() {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);
         gen_llvm_ir(&ast, &ati, output_path);
+    } else if matches.occurrences_of("bin-llvm") > 0 {
+        let output_path = output_path.unwrap_or("./a.out");
+        let ast = do_parse(input_path);
+        let ati = do_typecheck(&ast);
+        translater::llvmbin::compile_to_binary(&ast, &ati, output_path);
     }
 }

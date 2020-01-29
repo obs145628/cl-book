@@ -14,6 +14,10 @@ version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "clangutils"
+version = "0.1.0"
+
+[[package]]
 name = "irint3a"
 version = "0.1.0"
 dependencies = [
@@ -25,6 +29,7 @@ dependencies = [
 name = "lanexpr"
 version = "0.1.0"
 dependencies = [
+ "clangutils 0.1.0",
  "irint3a 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "llvm-sys 90.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
