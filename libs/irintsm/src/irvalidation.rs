@@ -40,7 +40,9 @@ pub enum ValidationError {
 struct ModuleValidation<'a> {
     module: &'a ir::Module,
     errs: Vec<ValidationError>,
-    fun_ids: HashSet<usize>,
+    fun_ids: HashSet<ir::FunctionRef>,
+    bb_ids: HashSet<ir::BasicBlockRef>,
+    fun_bb_ids: HashSet<ir::BasicBlockRef>,
 
     act_fun: Option<&'a ir::Function>,
     act_bb: Option<&'a ir::BasicBlock>,
@@ -53,6 +55,8 @@ impl<'a> ModuleValidation<'a> {
             module,
             errs: vec![],
             fun_ids: HashSet::new(),
+            bb_ids: HashSet::new(),
+            fun_bb_ids: HashSet::new(),
 
             act_fun: None,
             act_bb: None,
@@ -60,9 +64,14 @@ impl<'a> ModuleValidation<'a> {
         }
     }
 
+    // 1) The same function id cannot be used twice in a module
     fn check(&mut self) {
         for fun in self.module.fun_list() {
-            self.fun_ids.insert(fun.id().0);
+            if !self.fun_ids.insert(fun.id()) {
+                // 1)
+                self.act_fun = Some(fun);
+                self.err_fun("Function id already used in this module");
+            }
         }
 
         for fun in self.module.fun_list() {
@@ -75,21 +84,18 @@ impl<'a> ModuleValidation<'a> {
         self.act_fun = None;
     }
 
-    // 1) BasicBlocks must be in the exact order of their ids
-    // 2) A function must have at least one basic block
+    // 1) A function must have at least one basic block
     fn check_fun(&mut self) {
         let fun = self.act_fun.unwrap();
 
         if fun.bb_list().len() == 0 {
-            //2)
-            return self.err_fun("Function has no Basic Blocks");
+            //1)
+            self.err_fun("Function has no Basic Blocks");
         }
 
-        for (i, bb) in fun.bb_list().iter().enumerate() {
-            if bb.id().0 != i {
-                // 1)
-                return self.err_fun("Invalid ordering of basic blocks");
-            }
+        self.fun_bb_ids.clear();
+        for bb in fun.bb_list() {
+            self.fun_bb_ids.insert(bb.id());
         }
 
         for bb in fun.bb_list() {
@@ -99,13 +105,18 @@ impl<'a> ModuleValidation<'a> {
         self.act_bb = None;
     }
 
-    // 1) a Basic Block must not be empty
+    // 1) The same BasicBlock id cannot be used twice in a module
+    // 2) A Basic Block must not be empty
     fn check_bb(&mut self) {
         let bb = self.act_bb.unwrap();
+        if !self.bb_ids.insert(bb.id()) {
+            // 1)
+            self.err_bb("BasicBlockRef already used in this module");
+        }
 
         if bb.ins_list().len() == 0 {
-            //1)
-            return self.err_bb("BasicBlock is empty");
+            //2)
+            self.err_bb("BasicBlock is empty");
         }
 
         for i in 0..bb.ins_list().len() {
@@ -117,12 +128,11 @@ impl<'a> ModuleValidation<'a> {
 
     // 1) the last instruction must be a control flow instruction (br, jump, or ret)
     // 2) there must not be any other control flow instruction
-    // 3) branching instructions must jump to existing basic blocs
+    // 3) branching instructions must jump to basic blocs of the same function
     // 4) call instructions must reference existing functions
     fn check_ins(&mut self) {
         let ins_id = self.act_ins.unwrap();
         let ins = self.act_bb.unwrap().ins_list()[ins_id];
-        let nb_bbs = self.act_fun.unwrap().bb_list().len();
         let is_last = ins_id == self.act_bb.unwrap().ins_list().len() - 1;
 
         if is_last && !ins.is_control_flow() {
@@ -136,17 +146,19 @@ impl<'a> ModuleValidation<'a> {
         }
 
         if let ir::Ins::Jump(ins) = ins {
-            if ins.dst().0 >= nb_bbs {
+            if self.fun_bb_ids.get(&ins.dst()).is_none() {
                 // 3)
                 return self.err_ins("Jump to undefined Basic Block");
             }
         } else if let ir::Ins::Br(ins) = ins {
-            if ins.dst_true().0 >= nb_bbs || ins.dst_false().0 >= nb_bbs {
+            if self.fun_bb_ids.get(&ins.dst_true()).is_none()
+                || self.fun_bb_ids.get(&ins.dst_false()).is_none()
+            {
                 // 3)
                 return self.err_ins("Br to undefined Basic Block");
             }
         } else if let ir::Ins::Call(ins) = ins {
-            if self.fun_ids.get(&ins.fun().0).is_none() {
+            if self.fun_ids.get(&ins.fun()).is_none() {
                 // 4)
                 return self.err_ins("Call to undefined function");
             }

@@ -50,19 +50,36 @@ impl Ins {
     }
 }
 
-/// In the IR, Functions are identified by a unique usize
+/// In the IR, Functions are identified by an unique usize (in the Module)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct FunctionRef(pub usize);
+pub struct FunctionRef(usize);
 
-/// In the IR, BasicBlocks are identfied by an identifier
-/// unique size for the same function
+impl FunctionRef {
+    pub fn new(id: usize) -> Self {
+        FunctionRef(id)
+    }
+}
+
+/// In the IR, BasicBlocks are identfied by an unique usize (in the Module)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct BasicBlockRef(pub usize);
+pub struct BasicBlockRef(usize);
+
+impl BasicBlockRef {
+    pub fn new(id: usize) -> Self {
+        BasicBlockRef(id)
+    }
+}
 
 /// In the IR, accessing the locals variables is done through an usize index
 /// Hardcoded index, cannot be dynamic
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct LocalsIndex(pub usize);
+pub struct LocalsIndex(usize);
+
+impl LocalsIndex {
+    pub fn new(id: usize) -> Self {
+        LocalsIndex(id)
+    }
+}
 
 /// Instruction pop
 /// Discard value on top of the operands stack
@@ -274,11 +291,24 @@ impl BasicBlock {
 pub struct Function {
     id: FunctionRef,
     bb_list: Option<Vec<BasicBlock>>,
+    bb_mapping: HashMap<BasicBlockRef, usize>,
 }
 
 impl Function {
     pub fn new(id: FunctionRef, bb_list: Option<Vec<BasicBlock>>) -> Self {
-        Function { id, bb_list }
+        let mut res = Function {
+            id,
+            bb_list,
+            bb_mapping: HashMap::new(),
+        };
+
+        if let Some(bb_list) = &res.bb_list {
+            for (bb_idx, bb) in bb_list.iter().enumerate() {
+                res.bb_mapping.insert(bb.id(), bb_idx);
+            }
+        }
+
+        res
     }
 
     pub fn id(&self) -> FunctionRef {
@@ -294,7 +324,8 @@ impl Function {
     }
 
     pub fn get_bb(&self, id: BasicBlockRef) -> &BasicBlock {
-        &self.bb_list()[id.0]
+        let idx = *self.bb_mapping.get(&id).unwrap();
+        &self.bb_list.as_ref().unwrap()[idx]
     }
 }
 

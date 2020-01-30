@@ -1,0 +1,11 @@
+define 0 ;function _main
+0:
+  const 0
+  ret
+
+define 1 ;function _add
+0:
+  load 0
+  load 1
+  add
+  ret

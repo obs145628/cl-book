@@ -1,0 +1,73 @@
+declare 257 ;function _putchar
+
+declare 258 ;function _exit
+
+define 0 ;function _main
+0:
+  const 42
+  call %2, 1 ;call _iprint(i32)
+  const 10 ;newline
+  call %257, 1 ;call _putchar(i32)
+  const 0 ;exit
+  call %258, 1 ;call _exit(i32)
+  ret
+
+define 1 ;function _iprint_rec
+0:
+  load 0
+  const 0
+  cmpeq
+  br %2, %1
+
+1:
+  load 0
+  const 10
+  div
+  call %1, 1; _iprint_rec(i32)
+  load 0
+  const 10
+  rem
+  const 48 ;char 0
+  add
+  call %257, 1; call _putchar(i32)
+  jump %2
+
+2:
+  const 0
+  ret
+
+define 2 ;function _iprint
+0:
+  load 0
+  const 0
+  cmplt
+  br %1, %2
+
+1:
+  const 45 ;char -
+  call %257, 1 ;call _putchar(i32)
+  const 0
+  load 0
+  sub
+  call %1, 1 ;call _iprint_rec(i32)
+  jump %5
+
+2:
+  load 0
+  const 0
+  cmpeq
+  br %3, %4
+
+3:
+  const 48 ;char 0
+  call %257, 1 ;call _putchar(i32)
+  jump %5
+
+4:
+  load 0
+  call %1, 1 ;call _print_rec(i32)
+  jump %5
+
+5:
+  const 0
+  ret
