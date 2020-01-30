@@ -1,8 +1,8 @@
-declare 257 ;function _putchar
+.declare 257 ;function _putchar
 
-declare 258 ;function _exit
+.declare 258 ;function _exit
 
-define 0 ;function _main
+.define 0 ;function _main
 0:
   const 42
   call %2, 1 ;call _iprint(i32)
@@ -12,7 +12,7 @@ define 0 ;function _main
   call %258, 1 ;call _exit(i32)
   ret
 
-define 1 ;function _iprint_rec
+.define 1 ;function _iprint_rec
 0:
   load 0
   const 0
@@ -36,7 +36,7 @@ define 1 ;function _iprint_rec
   const 0
   ret
 
-define 2 ;function _iprint
+.define 2 ;function _iprint
 0:
   load 0
   const 0

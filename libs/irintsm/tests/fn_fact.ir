@@ -1,9 +1,9 @@
-define 0 ;function _main
+.define 0 ;function _main
 0:
   const 0
   ret
 
-define 1 ;function _fact
+.define 1 ;function _fact
 0:
   load 0
   const 2
@@ -12,7 +12,7 @@ define 1 ;function _fact
 
 1:
   const 1
-  jump 3:
+  jump %3
 
 2:
   load 0
@@ -21,6 +21,7 @@ define 1 ;function _fact
   sub
   call %1, 1 ;call _fact(i32)
   mul
+  jump %3
 
 3:
   ret
