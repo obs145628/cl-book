@@ -42,6 +42,8 @@ pub enum Item {
 /// Produce a stream of Item
 pub struct Parser {
     lex: Lexer,
+    next: Option<Item>,
+    is_eof: bool,
 }
 
 impl Parser {
@@ -53,7 +55,26 @@ impl Parser {
         Parser::new(Lexer::from_str(path))
     }
 
+    pub fn peek(&mut self) -> Option<&Item> {
+        self.load_next();
+        self.next.as_ref()
+    }
+
     pub fn next(&mut self) -> Option<Item> {
+        self.load_next();
+        let mut res = None;
+        std::mem::swap(&mut res, &mut self.next);
+        res
+    }
+
+    fn load_next(&mut self) {
+        if self.next.is_none() && !self.is_eof {
+            self.next = self.read_next();
+            self.is_eof = self.next.is_none()
+        }
+    }
+
+    fn read_next(&mut self) -> Option<Item> {
         // 1) skip first comments and stop at eof
         let main = loop {
             let tok = self.lex.next();
@@ -172,7 +193,11 @@ impl Parser {
     }
 
     fn new(lex: Lexer) -> Self {
-        Parser { lex }
+        Parser {
+            lex,
+            next: None,
+            is_eof: false,
+        }
     }
 }
 

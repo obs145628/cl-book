@@ -34,5 +34,6 @@ check_proj libs/obuid
 
 check_proj apps/cl-lanexpr
 check_proj apps/irint3a-utils/
+check_proj apps/irintsm-utils/
 check_proj apps/lexer-list/
 check_proj apps/mini-calc-eval/

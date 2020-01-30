@@ -42,11 +42,11 @@ impl<'a> IRPrinter<'a> {
     pub fn print_fun(&mut self, writer: &mut dyn Write) {
         let fun = self.fun.unwrap();
         if fun.is_extern() {
-            write!(writer, "declare {:?}\n", fun.id()).unwrap();
+            write!(writer, ".declare {}\n", fun.id()).unwrap();
             return;
         }
 
-        write!(writer, "define {:?}\n", fun.id()).unwrap();
+        write!(writer, ".define {}\n", fun.id()).unwrap();
 
         self.bb_mapping.clear();
         for (bb_idx, bb) in fun.bb_list().iter().enumerate() {
@@ -96,11 +96,11 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_load(&self, ins: ir::InsLoad, writer: &mut dyn Write) {
-        write!(writer, "load {:?}", ins.src()).unwrap();
+        write!(writer, "load {}", ins.src()).unwrap();
     }
 
     fn print_ins_store(&self, ins: ir::InsStore, writer: &mut dyn Write) {
-        write!(writer, "const {:?}", ins.dst()).unwrap();
+        write!(writer, "const {}", ins.dst()).unwrap();
     }
 
     fn print_ins_opbin(&self, ins: ir::InsOpbin, writer: &mut dyn Write) {
@@ -132,15 +132,15 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_jump(&self, ins: ir::InsJump, writer: &mut dyn Write) {
-        write!(writer, "jump %{:?}", ins.dst()).unwrap();
+        write!(writer, "jump %{}", ins.dst()).unwrap();
     }
 
     fn print_ins_br(&self, ins: ir::InsBr, writer: &mut dyn Write) {
-        write!(writer, "br %{:?}, %{:?}", ins.dst_true(), ins.dst_true()).unwrap();
+        write!(writer, "br %{}, %{}", ins.dst_true(), ins.dst_false()).unwrap();
     }
 
     fn print_ins_call(&self, ins: ir::InsCall, writer: &mut dyn Write) {
-        write!(writer, "const %{:?}, %{}", ins.fun(), ins.nb_args()).unwrap();
+        write!(writer, "call %{}, {}", ins.fun(), ins.nb_args()).unwrap();
     }
 
     fn print_ins_ret(&self, _ins: ir::InsRet, writer: &mut dyn Write) {

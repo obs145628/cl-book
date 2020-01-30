@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 // Basic rules about the IR
 //
@@ -60,6 +61,12 @@ impl FunctionRef {
     }
 }
 
+impl fmt::Display for FunctionRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// In the IR, BasicBlocks are identfied by an unique usize (in the Module)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct BasicBlockRef(usize);
@@ -67,6 +74,12 @@ pub struct BasicBlockRef(usize);
 impl BasicBlockRef {
     pub fn new(id: usize) -> Self {
         BasicBlockRef(id)
+    }
+}
+
+impl fmt::Display for BasicBlockRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -78,6 +91,12 @@ pub struct LocalsIndex(usize);
 impl LocalsIndex {
     pub fn new(id: usize) -> Self {
         LocalsIndex(id)
+    }
+}
+
+impl fmt::Display for LocalsIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

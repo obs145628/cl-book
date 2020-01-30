@@ -23,11 +23,15 @@ impl BasicBlockBuilder {
         if self.complete {
             panic!("Basic block already completed");
         }
+        self.complete = ins.is_control_flow();
         self.ins.push(ins);
     }
 
     fn finish(self) -> ir::BasicBlock {
         if !self.complete {
+            for ins in &self.ins {
+                println!("-- {:?}", ins);
+            }
             panic!("Basic block not completed yet");
         }
         ir::BasicBlock::new(self.id, self.ins)
@@ -38,17 +42,35 @@ impl BasicBlockBuilder {
 struct FunctionBuilder {
     id: ir::FunctionRef,
     bbs: Vec<BasicBlockBuilder>,
+    mapping_bb: HashMap<ir::BasicBlockRef, usize>,
 }
 
 impl FunctionBuilder {
     fn new(id: ir::FunctionRef) -> Self {
-        FunctionBuilder { id, bbs: vec![] }
+        FunctionBuilder {
+            id,
+            bbs: vec![],
+            mapping_bb: HashMap::new(),
+        }
+    }
+
+    fn add_bb(&mut self, bb_id: ir::BasicBlockRef) {
+        let idx = self.bbs.len();
+        let bb = BasicBlockBuilder::new(bb_id);
+        self.bbs.push(bb);
+        self.mapping_bb.insert(bb_id, idx);
+    }
+
+    fn get_bb(&mut self, id: ir::BasicBlockRef) -> &mut BasicBlockBuilder {
+        let idx = *self.mapping_bb.get(&id).unwrap();
+        &mut self.bbs[idx]
     }
 
     fn finish(mut self) -> ir::Function {
         let mut bbs = vec![];
         std::mem::swap(&mut bbs, &mut self.bbs);
         let bbs: Vec<_> = bbs.into_iter().map(|x| x.finish()).collect();
+
         let bbs = if bbs.len() == 0 { None } else { Some(bbs) };
 
         ir::Function::new(self.id, bbs)
@@ -62,9 +84,7 @@ impl FunctionBuilder {
 /// The created ir::Module is checked using irvalidation
 pub struct IRBuilder {
     funs: Vec<FunctionBuilder>,
-    bbs: Vec<BasicBlockBuilder>,
     mapping_fun: HashMap<ir::FunctionRef, usize>,
-    mapping_bb: HashMap<ir::BasicBlockRef, usize>,
     mapping_bb_fun: HashMap<ir::BasicBlockRef, ir::FunctionRef>,
 
     act_bb: Option<ir::BasicBlockRef>,
@@ -74,9 +94,7 @@ impl IRBuilder {
     pub fn new() -> Self {
         IRBuilder {
             funs: vec![],
-            bbs: vec![],
             mapping_fun: HashMap::new(),
-            mapping_bb: HashMap::new(),
             mapping_bb_fun: HashMap::new(),
 
             act_bb: None,
@@ -98,7 +116,7 @@ impl IRBuilder {
 
     /// Change the insert point to the end of a basic block
     pub fn set_insert_point(&mut self, bb: ir::BasicBlockRef) {
-        assert!(self.mapping_bb.get(&bb).is_some());
+        assert!(self.mapping_bb_fun.get(&bb).is_some());
         self.act_bb = Some(bb);
     }
 
@@ -125,14 +143,13 @@ impl IRBuilder {
     /// It doesn't change the insert point
     pub fn create_basic_block(&mut self, fun_id: ir::FunctionRef) -> ir::BasicBlockRef {
         assert!(self.mapping_fun.get(&fun_id).is_some());
+        let bb_id = self.gen_bb_id();
+        let fun_idx = *self.mapping_fun.get(&fun_id).unwrap();
+        let fun = &mut self.funs[fun_idx];
 
-        let id = self.gen_bb_id();
-        let bb_idx = self.bbs.len();
-        let bb = BasicBlockBuilder::new(id);
-        self.bbs.push(bb);
-        self.mapping_bb.insert(id, bb_idx);
-        self.mapping_bb_fun.insert(id, fun_id);
-        id
+        fun.add_bb(bb_id);
+        self.mapping_bb_fun.insert(bb_id, fun_id);
+        bb_id
     }
 
     /// Discard the builder and create the final ir::Module
@@ -152,10 +169,10 @@ impl IRBuilder {
             None => panic!("The insert point is None"),
         };
 
-        let bb = self
-            .bbs
-            .get_mut(*self.mapping_bb.get(&bb_id).unwrap())
-            .unwrap();
+        let fun_id = *self.mapping_bb_fun.get(&bb_id).unwrap();
+        let fun_idx = *self.mapping_fun.get(&fun_id).unwrap();
+        let fun = &mut self.funs[fun_idx];
+        let bb = fun.get_bb(bb_id);
         bb.add_ins(ins);
     }
 
@@ -224,7 +241,7 @@ impl IRBuilder {
     }
 
     fn gen_bb_id(&self) -> ir::BasicBlockRef {
-        ir::BasicBlockRef::new(self.bbs.len())
+        ir::BasicBlockRef::new(self.mapping_bb_fun.len())
     }
 
     fn gen_fun_id(&self) -> ir::FunctionRef {
