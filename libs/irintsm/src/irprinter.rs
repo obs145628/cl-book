@@ -132,11 +132,14 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_jump(&self, ins: ir::InsJump, writer: &mut dyn Write) {
-        write!(writer, "jump %{}", ins.dst()).unwrap();
+        let dst = *self.bb_mapping.get(&ins.dst()).unwrap();
+        write!(writer, "jump %{}", dst).unwrap();
     }
 
     fn print_ins_br(&self, ins: ir::InsBr, writer: &mut dyn Write) {
-        write!(writer, "br %{}, %{}", ins.dst_true(), ins.dst_false()).unwrap();
+        let dst_true = *self.bb_mapping.get(&ins.dst_true()).unwrap();
+        let dst_false = *self.bb_mapping.get(&ins.dst_false()).unwrap();
+        write!(writer, "br %{}, %{}", dst_true, dst_false).unwrap();
     }
 
     fn print_ins_call(&self, ins: ir::InsCall, writer: &mut dyn Write) {

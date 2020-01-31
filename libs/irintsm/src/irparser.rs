@@ -322,8 +322,8 @@ impl Parser {
         let dst = match args[0] {
             InsArg::IdInt(id) => id,
             _ => panic!("dst argument must be an idint"),
-        };
-        let dst = ir::BasicBlockRef::new(dst as usize);
+        } as usize;
+        let dst = *self.mapping_bb.get(&dst).unwrap();
 
         self.builder.ins_jump(dst);
     }
@@ -336,13 +336,13 @@ impl Parser {
         let dst_true = match args[0] {
             InsArg::IdInt(id) => id,
             _ => panic!("dst_true argument must be an idint"),
-        };
+        } as usize;
         let dst_false = match args[1] {
             InsArg::IdInt(id) => id,
             _ => panic!("dst_false argument must be an idint"),
-        };
-        let dst_true = ir::BasicBlockRef::new(dst_true as usize);
-        let dst_false = ir::BasicBlockRef::new(dst_false as usize);
+        } as usize;
+        let dst_true = *self.mapping_bb.get(&dst_true).unwrap();
+        let dst_false = *self.mapping_bb.get(&dst_false).unwrap();
 
         self.builder.ins_br(dst_true, dst_false);
     }

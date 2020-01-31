@@ -25,6 +25,7 @@ check_proj() {
 check_proj libs/asmparser
 check_proj libs/clangutils
 check_proj libs/interp_irint3a
+check_proj libs/interp_irintsm
 check_proj libs/irint3a
 check_proj libs/irintsm
 check_proj libs/lanexpr

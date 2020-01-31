@@ -157,7 +157,14 @@ impl IRBuilder {
     pub fn finish(self) -> ir::Module {
         let funs = self.funs.into_iter().map(|f| f.finish()).collect();
         let res = ir::Module::new(funs);
-        irvalidation::validate_module(&res);
+        let errs = irvalidation::validate_module(&res);
+        if errs.len() > 0 {
+            println!("Validation errors:");
+            for err in errs {
+                println!("{:?}", err);
+            }
+            panic!("Validation failed!");
+        }
         res
     }
 

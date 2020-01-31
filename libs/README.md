@@ -11,6 +11,10 @@ I use it to compile the LLVM IR files I generate.
 
 Interpreter for the irint3a IR
 
+# interp_irintsm
+
+Interpreter for the irintsm IR
+
 # irint3a
 
 Build, parse and print IR for irint3a.
