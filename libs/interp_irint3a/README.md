@@ -19,3 +19,4 @@ There a few extern functions that are implemented by the interperter to be able 
 The program starts by running the function 0 without any parameters.  
 The only way to stop the program is by calling exit.  
 Returning from the function 0 panics the interpreter.
+

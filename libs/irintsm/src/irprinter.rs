@@ -100,7 +100,7 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_store(&self, ins: ir::InsStore, writer: &mut dyn Write) {
-        write!(writer, "const {}", ins.dst()).unwrap();
+        write!(writer, "store {}", ins.dst()).unwrap();
     }
 
     fn print_ins_opbin(&self, ins: ir::InsOpbin, writer: &mut dyn Write) {

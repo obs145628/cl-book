@@ -17,6 +17,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "asmparser"
+version = "0.1.0"
+dependencies = [
+ "oblexer 0.1.0",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,11 +95,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "irintsm"
+version = "0.1.0"
+dependencies = [
+ "asmparser 0.1.0",
+]
+
+[[package]]
 name = "lanexpr"
 version = "0.1.0"
 dependencies = [
  "clangutils 0.1.0",
  "irint3a 0.1.0",
+ "irintsm 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "llvm-sys 90.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "oblexer 0.1.0",

@@ -14,3 +14,4 @@ oblexer = { path = "../oblexer/" }
 obparser = { path = "../obparser/" }
 obuid = { path = "../obuid/" }
 irint3a = { path = "../irint3a/" }
+irintsm = { path = "../irintsm/" }

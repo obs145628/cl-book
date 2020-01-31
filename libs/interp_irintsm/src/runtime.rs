@@ -214,6 +214,7 @@ impl Runtime {
                 self.call_stack.last().unwrap()
             );
         */
+
         self.ins_status = None;
 
         match ins {
@@ -342,6 +343,7 @@ impl Runtime {
 
         let bval = args[0].0 as u8;
         self.stdout.push(bval);
+        self.push_op(RTVal(0));
     }
 
     fn call_native_exit(&mut self, args: Vec<RTVal>) {

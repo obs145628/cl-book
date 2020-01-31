@@ -10,3 +10,4 @@ edition = "2018"
 clap = "2.33.0"
 lanexpr = { path = "../../libs/lanexpr/" }
 irint3a = { path = "../../libs/irint3a/" }
+irintsm = { path = "../../libs/irintsm/" }

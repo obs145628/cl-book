@@ -51,6 +51,28 @@ impl Ins {
     }
 }
 
+/// Trait used to compute the effects of instructions on the Operands Stack
+pub trait OperandsSizeEffect {
+    fn operands_size_change(&self) -> i32;
+}
+
+impl OperandsSizeEffect for Ins {
+    fn operands_size_change(&self) -> i32 {
+        match self {
+            Ins::Pop(ins) => ins.operands_size_change(),
+            Ins::Const(ins) => ins.operands_size_change(),
+            Ins::Load(ins) => ins.operands_size_change(),
+            Ins::Store(ins) => ins.operands_size_change(),
+            Ins::Opbin(ins) => ins.operands_size_change(),
+            Ins::Cmpbin(ins) => ins.operands_size_change(),
+            Ins::Jump(ins) => ins.operands_size_change(),
+            Ins::Br(ins) => ins.operands_size_change(),
+            Ins::Call(ins) => ins.operands_size_change(),
+            Ins::Ret(ins) => ins.operands_size_change(),
+        }
+    }
+}
+
 /// In the IR, Functions are identified by an unique usize (in the Module)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct FunctionRef(usize);
@@ -112,6 +134,12 @@ impl InsPop {
     }
 }
 
+impl OperandsSizeEffect for InsPop {
+    fn operands_size_change(&self) -> i32 {
+        -1
+    }
+}
+
 /// Instruction const
 /// Push a constant on the operands stack
 /// const <i32-const>
@@ -127,6 +155,12 @@ impl InsConst {
 
     pub fn val(&self) -> i32 {
         self.val
+    }
+}
+
+impl OperandsSizeEffect for InsConst {
+    fn operands_size_change(&self) -> i32 {
+        1
     }
 }
 
@@ -148,6 +182,12 @@ impl InsLoad {
     }
 }
 
+impl OperandsSizeEffect for InsLoad {
+    fn operands_size_change(&self) -> i32 {
+        1
+    }
+}
+
 /// Instruction store
 /// Pop value from the operand stacks and store it to a local
 /// store <dst-local-index>
@@ -163,6 +203,12 @@ impl InsStore {
 
     pub fn dst(&self) -> LocalsIndex {
         self.dst
+    }
+}
+
+impl OperandsSizeEffect for InsStore {
+    fn operands_size_change(&self) -> i32 {
+        -1
     }
 }
 
@@ -182,6 +228,12 @@ pub enum InsOpbin {
     Rem,
 }
 
+impl OperandsSizeEffect for InsOpbin {
+    fn operands_size_change(&self) -> i32 {
+        -1
+    }
+}
+
 /// Represent multiple instructions for binary comparisons
 /// Pop the 2 int32 argument values from the operands stack
 /// Push the results to the operands stack
@@ -195,6 +247,12 @@ pub enum InsCmpbin {
     Eq,
     Lt,
     Gt,
+}
+
+impl OperandsSizeEffect for InsCmpbin {
+    fn operands_size_change(&self) -> i32 {
+        -1
+    }
 }
 
 /// Instruction jump
@@ -212,6 +270,12 @@ impl InsJump {
 
     pub fn dst(&self) -> BasicBlockRef {
         self.dst
+    }
+}
+
+impl OperandsSizeEffect for InsJump {
+    fn operands_size_change(&self) -> i32 {
+        0
     }
 }
 
@@ -242,6 +306,12 @@ impl InsBr {
     }
 }
 
+impl OperandsSizeEffect for InsBr {
+    fn operands_size_change(&self) -> i32 {
+        -1
+    }
+}
+
 /// Instruction call
 /// Pop arguments from the operands stack and call a function
 /// Return value pushed to the operands stack
@@ -268,6 +338,12 @@ impl InsCall {
     }
 }
 
+impl OperandsSizeEffect for InsCall {
+    fn operands_size_change(&self) -> i32 {
+        1 - (self.nb_args() as i32)
+    }
+}
+
 /// Instruction ret
 /// Return from the current function
 /// The return value is poped from the operands stack
@@ -278,6 +354,12 @@ pub struct InsRet {}
 impl InsRet {
     pub fn new() -> Self {
         InsRet {}
+    }
+}
+
+impl OperandsSizeEffect for InsRet {
+    fn operands_size_change(&self) -> i32 {
+        -1
     }
 }
 

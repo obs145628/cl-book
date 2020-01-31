@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ir;
+use crate::ir::OperandsSizeEffect;
 use crate::irvalidation;
 
 // basic block in construction
@@ -88,6 +89,7 @@ pub struct IRBuilder {
     mapping_bb_fun: HashMap<ir::BasicBlockRef, ir::FunctionRef>,
 
     act_bb: Option<ir::BasicBlockRef>,
+    operands_count: i32,
 }
 
 impl IRBuilder {
@@ -98,6 +100,7 @@ impl IRBuilder {
             mapping_bb_fun: HashMap::new(),
 
             act_bb: None,
+            operands_count: 0,
         }
     }
 
@@ -123,6 +126,24 @@ impl IRBuilder {
     /// Remove the insert point, cannot create functions
     pub fn reset_insert_point(&mut self) {
         self.act_bb = None;
+    }
+
+    /// The IRBuilder keep tracks of the number of push / pops in the operands stack
+    /// Returns this numbers
+    /// It's up to the class user to use this to verify code
+    pub fn get_operands_count(&self) -> i32 {
+        self.operands_count
+    }
+
+    /// Reset the operands count to 0
+    pub fn reset_operands_count(&mut self) {
+        self.operands_count = 0;
+    }
+
+    /// Manually increase or decrease the operands count
+    /// It might be needed because of branches that makes the count wrong
+    pub fn update_operands_count(&mut self, change: i32) {
+        self.operands_count += change;
     }
 
     /// Create a new empty function
@@ -180,6 +201,7 @@ impl IRBuilder {
         let fun_idx = *self.mapping_fun.get(&fun_id).unwrap();
         let fun = &mut self.funs[fun_idx];
         let bb = fun.get_bb(bb_id);
+        self.operands_count += ins.operands_size_change();
         bb.add_ins(ins);
     }
 

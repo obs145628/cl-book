@@ -7,8 +7,6 @@ use lanexpr::parser;
 use lanexpr::translater;
 use lanexpr::typecheck;
 
-use irint3a::irprinter::CodePrintable;
-
 fn do_parse(path: &str) -> ast::ASTExprPtr {
     let mut ps = parser::Parser::new_from_file(path);
     ps.parse()
@@ -21,7 +19,17 @@ fn do_typecheck(ast: &ast::ASTExprPtr) -> BindApp {
 }
 
 fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
+    use irint3a::irprinter::CodePrintable;
+
     let tr = translater::irint3a::Translater::new(root, ba);
+    let code = tr.translate();
+    code.print_code(&mut std::io::stdout());
+}
+
+fn gen_irintsm(root: &ast::ASTExprPtr, ba: &BindApp) {
+    use irintsm::irprinter::CodePrintable;
+
+    let tr = translater::irintsmtl::Translater::new(root, ba);
     let code = tr.translate();
     code.print_code(&mut std::io::stdout());
 }
@@ -73,6 +81,11 @@ fn main() {
                 .help("Generate IR code for irint3a"),
         )
         .arg(
+            Arg::with_name("gen-irintsm")
+                .long("gen-irintsm")
+                .help("Generate IR code for irintsm"),
+        )
+        .arg(
             Arg::with_name("gen-llvm")
                 .long("gen-llvm")
                 .help("Generate LLVM IR code"),
@@ -100,6 +113,10 @@ fn main() {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);
         gen_irint3a(&ast, &ati);
+    } else if matches.occurrences_of("gen-irintsm") > 0 {
+        let ast = do_parse(input_path);
+        let ati = do_typecheck(&ast);
+        gen_irintsm(&ast, &ati);
     } else if matches.occurrences_of("gen-llvm") > 0 {
         let ast = do_parse(input_path);
         let ati = do_typecheck(&ast);

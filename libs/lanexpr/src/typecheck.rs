@@ -25,7 +25,7 @@ impl TypeCheck {
 
     pub fn check(&mut self, node: &ASTExprPtr) {
         self.builder.begin();
-        node.accept(self);
+        self.get_exp_type(node);
         self.builder.end();
     }
 
