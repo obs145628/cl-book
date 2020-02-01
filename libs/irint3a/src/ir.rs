@@ -33,7 +33,7 @@ use std::collections::HashMap;
 pub struct RegId(pub usize);
 
 /// BasicBlock unique identifier
-/// Every basic block in a module as a different identifier
+/// Every basic block in a function has a different identifier
 /// It's used to manipulate and move around basic blocks more easily (without using the whole structure)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct BasicBlockId(pub usize);
@@ -477,6 +477,7 @@ pub struct Function {
     is_extern: bool,
     bbs: HashMap<BasicBlockId, BasicBlock>,
     bbs_list: Vec<BasicBlockId>,
+    bb_count: usize, //counter to create unique ids
 }
 
 impl Function {
@@ -486,6 +487,7 @@ impl Function {
             is_extern,
             bbs: HashMap::new(),
             bbs_list: vec![],
+            bb_count: 0,
         }
     }
 
@@ -533,18 +535,28 @@ impl Function {
         self.move_basic_block(pos, 0);
     }
 
-    fn add_basic_block(&mut self, bb_id: BasicBlockId) {
+    /// Add a new empty basic block at the end of the function
+    pub fn create_basic_block(&mut self) -> BasicBlockId {
         assert!(!self.is_extern);
+        let bb_id = self.gen_bb_id();
         let bb = BasicBlock::new(bb_id, self.id);
         self.bbs.insert(bb_id, bb);
         self.bbs_list.push(bb_id);
+        bb_id
     }
 
-    fn remove_basic_block(&mut self, id: BasicBlockId) {
+    /// Remove the basic block `id` belonging to the function`
+    pub fn remove_basic_block(&mut self, id: BasicBlockId) {
         assert!(!self.is_extern);
         self.bbs.remove(&id).unwrap();
         let pos = self.get_basic_block_pos(id);
         self.bbs_list.remove(pos);
+    }
+
+    fn gen_bb_id(&mut self) -> BasicBlockId {
+        let id = BasicBlockId(self.bb_count);
+        self.bb_count += 1;
+        id
     }
 }
 
@@ -556,8 +568,6 @@ impl Function {
 pub struct Module {
     funs: Vec<Function>,
     funs_by_id: HashMap<FunctionId, usize>, //value is the index in funs vector
-    fun_of_bb: HashMap<BasicBlockId, FunctionId>, //find the function a bb belongs to
-    next_bb_id: usize,
 }
 
 impl Module {
@@ -565,8 +575,6 @@ impl Module {
         Module {
             funs: vec![],
             funs_by_id: HashMap::new(),
-            fun_of_bb: HashMap::new(),
-            next_bb_id: 1,
         }
     }
 
@@ -584,16 +592,6 @@ impl Module {
         Some(&mut self.funs[idx])
     }
 
-    pub fn get_fun_mut2(&mut self, id: FunctionId) -> &mut Function {
-        let idx = *self.funs_by_id.get(&id).unwrap();
-        &mut self.funs[idx]
-    }
-
-    /// Returns the id of the function that owns the basic block
-    pub fn get_basic_block_owner(&self, id: BasicBlockId) -> FunctionId {
-        *self.fun_of_bb.get(&id).unwrap()
-    }
-
     /// Create a new empty non-extern function
     /// `id` optional id for the new function, if none, one is generated
     pub fn create_function(&mut self, id: Option<FunctionId>) -> FunctionId {
@@ -605,22 +603,6 @@ impl Module {
     /// Create an extern function
     pub fn create_extern_function(&mut self, id: FunctionId) {
         self.create_new_function(id, true);
-    }
-
-    /// Add a new empty basic block at the end of the function `fun`,
-    pub fn create_basic_block(&mut self, fun_id: FunctionId) -> BasicBlockId {
-        let bb_id = self.gen_bb_id();
-        let fun = self.get_fun_mut(fun_id).unwrap();
-        fun.add_basic_block(bb_id);
-        self.fun_of_bb.insert(bb_id, fun_id);
-        bb_id
-    }
-
-    /// Remove the basic block `bb_id` belonging to the function `fun_id`
-    pub fn remove_basic_block(&mut self, bb_id: BasicBlockId, fun_id: FunctionId) {
-        let fun = self.get_fun_mut(fun_id).unwrap();
-        fun.remove_basic_block(bb_id);
-        self.fun_of_bb.remove(&bb_id).unwrap();
     }
 
     fn create_new_function(&mut self, id: FunctionId, is_extern: bool) {
@@ -640,11 +622,5 @@ impl Module {
             next_id.0 += 1;
         }
         next_id
-    }
-
-    fn gen_bb_id(&mut self) -> BasicBlockId {
-        let id = BasicBlockId(self.next_bb_id);
-        self.next_bb_id += 1;
-        id
     }
 }

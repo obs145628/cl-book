@@ -115,26 +115,44 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_movi(&self, ins: &ir::InsMovi, writer: &mut dyn Write) {
-        write!(writer, "movi %{}, {}", ins.dst().0, ins.const_val()).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        write!(writer, "movi %{}, {}", dst, ins.const_val()).unwrap();
     }
 
     fn print_ins_movr(&self, ins: &ir::InsMovr, writer: &mut dyn Write) {
-        write!(writer, "movr %{}, %{}", ins.dst().0, ins.src().0).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let src = fun_names.get_register_name(ins.src()).unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        write!(writer, "movr %{}, %{}", dst, src).unwrap();
     }
 
     fn print_ins_load(&self, ins: &ir::InsLoad, writer: &mut dyn Write) {
-        write!(writer, "load %{}, %{}", ins.dst().0, ins.src().0).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let src = fun_names.get_register_name(ins.src()).unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        write!(writer, "load %{}, %{}", dst, src).unwrap();
     }
 
     fn print_ins_store(&self, ins: &ir::InsStore, writer: &mut dyn Write) {
-        write!(writer, "store %{}, %{}", ins.dst().0, ins.src().0).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let src = fun_names.get_register_name(ins.src()).unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        write!(writer, "store %{}, %{}", dst, src).unwrap();
     }
 
     fn print_ins_alloca(&self, ins: &ir::InsAlloca, writer: &mut dyn Write) {
-        write!(writer, "alloca %{}", ins.dst().0).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        write!(writer, "alloca %{}", dst).unwrap();
     }
 
     fn print_ins_opbin(&self, ins: &ir::InsOpbin, writer: &mut dyn Write) {
+        let fun_names = self.fun_names.unwrap();
+        let src1 = fun_names.get_register_name(ins.src1()).unwrap();
+        let src2 = fun_names.get_register_name(ins.src2()).unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+
         let ins_name = match ins.kind() {
             ir::InsOpbinKind::Add => "add",
             ir::InsOpbinKind::Sub => "sub",
@@ -143,68 +161,54 @@ impl<'a> IRPrinter<'a> {
             ir::InsOpbinKind::Mod => "mod",
         };
 
-        write!(
-            writer,
-            "{} %{}, %{}, %{}",
-            ins_name,
-            ins.dst().0,
-            ins.src1().0,
-            ins.src2().0
-        )
-        .unwrap();
+        write!(writer, "{} %{}, %{}, %{}", ins_name, dst, src1, src2).unwrap();
     }
 
     fn print_ins_cmpbin(&self, ins: &ir::InsCmpbin, writer: &mut dyn Write) {
+        let fun_names = self.fun_names.unwrap();
+        let src1 = fun_names.get_register_name(ins.src1()).unwrap();
+        let src2 = fun_names.get_register_name(ins.src2()).unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+
         let ins_name = match ins.kind() {
             ir::InsCmpbinKind::Eq => "cmpeq",
             ir::InsCmpbinKind::Gt => "cmpgt",
             ir::InsCmpbinKind::Lt => "cmplt",
         };
 
-        write!(
-            writer,
-            "{} %{}, %{}, %{}",
-            ins_name,
-            ins.dst().0,
-            ins.src1().0,
-            ins.src2().0
-        )
-        .unwrap();
+        write!(writer, "{} %{}, %{}, %{}", ins_name, dst, src1, src2,).unwrap();
     }
 
     fn print_ins_jump(&self, ins: &ir::InsJump, writer: &mut dyn Write) {
         let fun_names = self.fun_names.unwrap();
-
         let dst_name = fun_names.get_basic_block_name(ins.dst()).unwrap();
         write!(writer, "jump {}", dst_name).unwrap();
     }
 
     fn print_ins_br(&self, ins: &ir::InsBr, writer: &mut dyn Write) {
         let fun_names = self.fun_names.unwrap();
-
+        let src = fun_names.get_register_name(ins.src()).unwrap();
         let dst_true_name = fun_names.get_basic_block_name(ins.dst_true()).unwrap();
         let dst_false_name = fun_names.get_basic_block_name(ins.dst_false()).unwrap();
 
-        write!(
-            writer,
-            "br %{}, {}, {}",
-            ins.src().0,
-            dst_true_name,
-            dst_false_name
-        )
-        .unwrap();
+        write!(writer, "br %{}, {}, {}", src, dst_true_name, dst_false_name).unwrap();
     }
 
     fn print_ins_call(&self, ins: &ir::InsCall, writer: &mut dyn Write) {
-        let fun_name = self.names.get_function_name(ins.fun()).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let dst = fun_names.get_register_name(ins.dst()).unwrap();
+        let fun = self.names.get_function_name(ins.fun()).unwrap();
 
-        write!(writer, "call %{}, {}", ins.dst().0, fun_name).unwrap();
+        write!(writer, "call %{}, {}", dst, fun).unwrap();
         for arg in ins.args() {
-            write!(writer, ", %{}", arg.0).unwrap();
+            let arg = fun_names.get_register_name(*arg).unwrap();
+            write!(writer, ", %{}", arg).unwrap();
         }
     }
 
     fn print_ins_ret(&self, ins: &ir::InsRet, writer: &mut dyn Write) {
-        write!(writer, "ret %{}", ins.src().0).unwrap();
+        let fun_names = self.fun_names.unwrap();
+        let src = fun_names.get_register_name(ins.src()).unwrap();
+        write!(writer, "ret %{}", src).unwrap();
     }
 }

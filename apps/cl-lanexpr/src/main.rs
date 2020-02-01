@@ -22,8 +22,9 @@ fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
     use irint3a::irprinter::CodePrintable;
 
     let tr = translater::irint3a::Translater::new(root, ba);
-    let code = tr.translate();
-    code.print_code(&mut std::io::stdout(), None);
+    let (code, mut names) = tr.translate();
+    names.complete_undefined(&code);
+    code.print_code(&mut std::io::stdout(), Some(&names));
 }
 
 fn gen_irintsm(root: &ast::ASTExprPtr, ba: &BindApp) {

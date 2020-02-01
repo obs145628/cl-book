@@ -123,32 +123,54 @@ impl FunBuilder {
 }
 */
 
+/// An IRBuilder is linked to a function, and can manipulate basic blocks / instructions
+/// in a more convenient way that by just modifying the Function
+/// TODO: might be possible to directly hold a reference to a basicblock using unsafe code or some trick
+/// That way I could avoid the lookup every time.
 pub struct IRBuilder<'a> {
-    bb: &'a mut ir::BasicBlock,
+    fun: &'a mut ir::Function,
+    bb_id: Option<ir::BasicBlockId>,
 }
 
 impl<'a> IRBuilder<'a> {
-    pub fn new(module: &'a mut ir::Module, bb_id: ir::BasicBlockId) -> Self {
-        let fun_id = module.get_basic_block_owner(bb_id);
-        let fun = module.get_fun_mut(fun_id).unwrap();
-        let bb = fun.get_basic_block_mut(bb_id);
-        IRBuilder { bb }
+    pub fn new(fun: &'a mut ir::Function) -> Self {
+        IRBuilder { fun, bb_id: None }
+    }
+
+    /// Returns the function id the IRBuilder is linked to
+    pub fn actual_function(&self) -> ir::FunctionId {
+        self.fun.id()
     }
 
     /// Returns the basic block id of the actual insert point
-    pub fn actual_basic_block(&self) -> ir::BasicBlockId {
-        self.bb.id()
+    pub fn get_insert_point(&self) -> Option<ir::BasicBlockId> {
+        self.bb_id
     }
 
-    /// Returns the function id of the actual insert point
-    pub fn actual_function(&self) -> ir::FunctionId {
-        self.bb.fun_id()
+    /// Change the insert point to another basic block
+    pub fn set_insert_point(&mut self, bb: ir::BasicBlockId) {
+        assert!(self.fun.get_basic_block(bb).id() == bb);
+        self.bb_id = Some(bb);
+    }
+
+    /// Remove the current insert point
+    pub fn reset_insert_point(&mut self) {
+        self.bb_id = None;
+    }
+
+    ///Create a basic block at the end of the function
+    pub fn create_basic_block(&mut self) -> ir::BasicBlockId {
+        self.fun.create_basic_block()
     }
 
     /// Append an instruction at the insert point
     /// Usually this function shouldn't be called, it's better to use ins_* to build instructions
     pub fn append_ins(&mut self, ins: ir::Ins) {
-        self.bb.push_ins(ins);
+        let id = self
+            .bb_id
+            .expect("Cannot insert instruction: no insert point set");
+        let bb = self.fun.get_basic_block_mut(id);
+        bb.push_ins(ins);
     }
 
     pub fn ins_movi(&mut self, dst: ir::RegId, const_val: i32) {
@@ -256,7 +278,7 @@ impl<'a> IRBuilder<'a> {
         self.append_ins(ir::Ins::Br(ir::InsBr::new(src, dst_true, dst_false)));
     }
 
-    pub fn ins_call_addr(&mut self, dst: ir::RegId, fun: ir::FunctionId, args: Vec<ir::RegId>) {
+    pub fn ins_call(&mut self, dst: ir::RegId, fun: ir::FunctionId, args: Vec<ir::RegId>) {
         self.append_ins(ir::Ins::Call(ir::InsCall::new(dst, fun, args)));
     }
 
