@@ -23,7 +23,7 @@ fn gen_irint3a(root: &ast::ASTExprPtr, ba: &BindApp) {
 
     let tr = translater::irint3a::Translater::new(root, ba);
     let code = tr.translate();
-    code.print_code(&mut std::io::stdout());
+    code.print_code(&mut std::io::stdout(), None);
 }
 
 fn gen_irintsm(root: &ast::ASTExprPtr, ba: &BindApp) {

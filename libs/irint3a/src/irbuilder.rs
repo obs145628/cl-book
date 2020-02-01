@@ -1,5 +1,6 @@
 use crate::ir;
 
+/*
 use std::collections::HashMap;
 
 struct UnresolvedJump {
@@ -120,336 +121,146 @@ impl FunBuilder {
         ir::DefFun::new(self.addr, Some(code))
     }
 }
+*/
 
-pub struct IRBuilder {
-    local_defs: Vec<FunBuilder>,
-    extern_defs: Vec<ir::DefFun>,
-    defs_named: HashMap<String, ir::FunAddress>,
-    current_fun: Option<FunBuilder>,
-    next_fun_addr: usize,
-    next_fun_name: usize,
+pub struct IRBuilder<'a> {
+    bb: &'a mut ir::BasicBlock,
 }
 
-impl IRBuilder {
-    pub fn new() -> Self {
-        IRBuilder {
-            local_defs: vec![],
-            extern_defs: vec![],
-            defs_named: HashMap::new(),
-            current_fun: None,
-            next_fun_addr: 1001,
-            next_fun_name: 0,
-        }
+impl<'a> IRBuilder<'a> {
+    pub fn new(module: &'a mut ir::Module, bb_id: ir::BasicBlockId) -> Self {
+        let fun_id = module.get_basic_block_owner(bb_id);
+        let fun = module.get_fun_mut(fun_id).unwrap();
+        let bb = fun.get_basic_block_mut(bb_id);
+        IRBuilder { bb }
     }
 
-    /// Add an extern function to the module
-    /// * `name` optional, if not set, one is generated
-    pub fn add_extern_fun(&mut self, name: Option<&str>, id: ir::FunAddress) {
-        let name = match name {
-            Some(name) => name.to_string(),
-            None => self.gen_fun_name(),
-        };
-
-        if self.defs_named.get(&name).is_some() {
-            panic!("There is already a function with the name {}", name);
-        }
-        let def = ir::DefFun::new(id, None);
-        self.defs_named.insert(name.to_string(), id);
-        self.extern_defs.push(def);
+    /// Returns the basic block id of the actual insert point
+    pub fn actual_basic_block(&self) -> ir::BasicBlockId {
+        self.bb.id()
     }
 
-    /// Start the definition of a new function
-    /// All features created instructions will be appended to this function body
-    /// once the function is complete, call end_function()
-    /// * `name` optional, if not set, one is generated;
-    /// * `id` optional FunAddress, if not set, one is generated
-    pub fn begin_function(&mut self, name: Option<&str>, id: Option<ir::FunAddress>) {
-        let name = match name {
-            Some(name) => name.to_string(),
-            None => self.gen_fun_name(),
-        };
-
-        if self.current_fun.is_some() {
-            panic!("Cannot begin a function, there is still one unfinished");
-        }
-        if self.defs_named.get(&name).is_some() {
-            panic!("There is already a function with the name {}", name);
-        }
-
-        let id = match id {
-            Some(id) => id,
-            None => self.gen_fun_addr(),
-        };
-
-        self.defs_named.insert(name.to_string(), id);
-        self.current_fun = Some(FunBuilder::new(id));
+    /// Returns the function id of the actual insert point
+    pub fn actual_function(&self) -> ir::FunctionId {
+        self.bb.fun_id()
     }
 
-    /// Complete the definition of the current function
-    /// begin_function() must be called before
-    pub fn end_function(&mut self) {
-        if self.current_fun.is_none() {
-            panic!("There is no unfinished function");
-        }
-
-        let mut fun = None;
-        std::mem::swap(&mut self.current_fun, &mut fun);
-        self.local_defs.push(fun.unwrap());
-    }
-
-    /// Completes the module, build and returns a fully functional ModuleExtended
-    pub fn build(mut self) -> ir::ModuleExtended {
-        if self.current_fun.is_some() {
-            panic!("Cannot complete modile, one function is still being defined");
-        }
-
-        let mut local_defs = vec![];
-        std::mem::swap(&mut local_defs, &mut self.local_defs);
-        let local_defs = local_defs
-            .into_iter()
-            .map(|f| f.build(&self.defs_named))
-            .collect();
-
-        let mut defs: Vec<ir::DefFun> = local_defs;
-        defs.append(&mut self.extern_defs);
-        let module = ir::Module::new(defs);
-
-        let mut funs = HashMap::new();
-        for (fun_name, fun_addr) in self.defs_named {
-            let labels = HashMap::new();
-            funs.insert(fun_addr, ir::FunExtended::new(fun_addr, fun_name, labels));
-        }
-
-        ir::ModuleExtended::new(module, funs)
-    }
-
-    /// Returns the LocalLabel of the last inserted instruction
-    pub fn get_last_pos(&self) -> ir::LocalLabel {
-        self.current_fun.as_ref().unwrap().get_last_pos()
-    }
-
-    /// Returns the LocalLabel of one past the last inserted instruction
-    pub fn get_next_pos(&self) -> ir::LocalLabel {
-        self.current_fun.as_ref().unwrap().get_next_pos()
-    }
-
-    /// Append an instruction to the current function body
+    /// Append an instruction at the insert point
     /// Usually this function shouldn't be called, it's better to use ins_* to build instructions
-    pub fn append_ins(&mut self, ins: ir::Ins, label: Option<&str>) {
-        self.add_unresolved(UnresolvedIns::Resolved(ins), label);
+    pub fn append_ins(&mut self, ins: ir::Ins) {
+        self.bb.push_ins(ins);
     }
 
-    pub fn ins_movi(&mut self, dst: ir::RegId, const_val: i32, label: Option<&str>) {
-        self.append_ins(ir::Ins::Movi(ir::InsMovi::new(dst, const_val)), label);
+    pub fn ins_movi(&mut self, dst: ir::RegId, const_val: i32) {
+        self.append_ins(ir::Ins::Movi(ir::InsMovi::new(dst, const_val)));
     }
 
-    pub fn ins_movr(&mut self, dst: ir::RegId, src: ir::RegId, label: Option<&str>) {
-        self.append_ins(ir::Ins::Movr(ir::InsMovr::new(dst, src)), label);
+    pub fn ins_movr(&mut self, dst: ir::RegId, src: ir::RegId) {
+        self.append_ins(ir::Ins::Movr(ir::InsMovr::new(dst, src)));
     }
 
-    pub fn ins_load(&mut self, dst: ir::RegId, src: ir::RegId, label: Option<&str>) {
-        self.append_ins(ir::Ins::Load(ir::InsLoad::new(dst, src)), label);
+    pub fn ins_load(&mut self, dst: ir::RegId, src: ir::RegId) {
+        self.append_ins(ir::Ins::Load(ir::InsLoad::new(dst, src)));
     }
 
-    pub fn ins_store(&mut self, dst: ir::RegId, src: ir::RegId, label: Option<&str>) {
-        self.append_ins(ir::Ins::Store(ir::InsStore::new(dst, src)), label);
+    pub fn ins_store(&mut self, dst: ir::RegId, src: ir::RegId) {
+        self.append_ins(ir::Ins::Store(ir::InsStore::new(dst, src)));
     }
 
-    pub fn ins_alloca(&mut self, dst: ir::RegId, label: Option<&str>) {
-        self.append_ins(ir::Ins::Alloca(ir::InsAlloca::new(dst)), label);
+    pub fn ins_alloca(&mut self, dst: ir::RegId) {
+        self.append_ins(ir::Ins::Alloca(ir::InsAlloca::new(dst)));
     }
 
-    pub fn ins_add(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Opbin(ir::InsOpbin::new(ir::InsOpbinKind::Add, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_add(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Opbin(ir::InsOpbin::new(
+            ir::InsOpbinKind::Add,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_sub(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Opbin(ir::InsOpbin::new(ir::InsOpbinKind::Sub, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_sub(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Opbin(ir::InsOpbin::new(
+            ir::InsOpbinKind::Sub,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_mul(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Opbin(ir::InsOpbin::new(ir::InsOpbinKind::Mul, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_mul(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Opbin(ir::InsOpbin::new(
+            ir::InsOpbinKind::Mul,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_div(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Opbin(ir::InsOpbin::new(ir::InsOpbinKind::Div, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_div(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Opbin(ir::InsOpbin::new(
+            ir::InsOpbinKind::Div,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_mod(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Opbin(ir::InsOpbin::new(ir::InsOpbinKind::Mod, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_mod(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Opbin(ir::InsOpbin::new(
+            ir::InsOpbinKind::Mod,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_cmpeq(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Cmpbin(ir::InsCmpbin::new(ir::InsCmpbinKind::Eq, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_cmpeq(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Cmpbin(ir::InsCmpbin::new(
+            ir::InsCmpbinKind::Eq,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_cmplt(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Cmpbin(ir::InsCmpbin::new(ir::InsCmpbinKind::Lt, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_cmplt(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Cmpbin(ir::InsCmpbin::new(
+            ir::InsCmpbinKind::Lt,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_cmpgt(
-        &mut self,
-        dst: ir::RegId,
-        src1: ir::RegId,
-        src2: ir::RegId,
-        label: Option<&str>,
-    ) {
-        self.append_ins(
-            ir::Ins::Cmpbin(ir::InsCmpbin::new(ir::InsCmpbinKind::Gt, dst, src1, src2)),
-            label,
-        );
+    pub fn ins_cmpgt(&mut self, dst: ir::RegId, src1: ir::RegId, src2: ir::RegId) {
+        self.append_ins(ir::Ins::Cmpbin(ir::InsCmpbin::new(
+            ir::InsCmpbinKind::Gt,
+            dst,
+            src1,
+            src2,
+        )));
     }
 
-    pub fn ins_jump(&mut self, jump_label: &str, label: Option<&str>) {
-        self.add_unresolved(
-            UnresolvedIns::Jump(UnresolvedJump {
-                label_name: jump_label.to_string(),
-            }),
-            label,
-        );
-    }
-
-    pub fn ins_jump_pos(&mut self, jump_pos: ir::LocalLabel, label: Option<&str>) {
-        self.append_ins(ir::Ins::Jump(ir::InsJump::new(jump_pos)), label);
+    pub fn ins_jump(&mut self, dst: ir::BasicBlockId) {
+        self.append_ins(ir::Ins::Jump(ir::InsJump::new(dst)));
     }
 
     pub fn ins_br(
         &mut self,
         src: ir::RegId,
-        label_true: &str,
-        label_false: &str,
-        label: Option<&str>,
+        dst_true: ir::BasicBlockId,
+        dst_false: ir::BasicBlockId,
     ) {
-        self.add_unresolved(
-            UnresolvedIns::Br(UnresolvedBr {
-                ins: ir::InsBr::new(src, ir::LocalLabel(0), ir::LocalLabel(0)),
-                true_name: label_true.to_string(),
-                false_name: label_false.to_string(),
-            }),
-            label,
-        );
+        self.append_ins(ir::Ins::Br(ir::InsBr::new(src, dst_true, dst_false)));
     }
 
-    pub fn ins_br_pos(
-        &mut self,
-        src: ir::RegId,
-        pos_true: ir::LocalLabel,
-        pos_false: ir::LocalLabel,
-        label: Option<&str>,
-    ) {
-        self.append_ins(ir::Ins::Br(ir::InsBr::new(src, pos_true, pos_false)), label);
+    pub fn ins_call_addr(&mut self, dst: ir::RegId, fun: ir::FunctionId, args: Vec<ir::RegId>) {
+        self.append_ins(ir::Ins::Call(ir::InsCall::new(dst, fun, args)));
     }
 
-    pub fn ins_call_name(
-        &mut self,
-        dst: ir::RegId,
-        fun: &str,
-        args: Vec<ir::RegId>,
-        label: Option<&str>,
-    ) {
-        self.add_unresolved(
-            UnresolvedIns::Call(UnresolvedCall {
-                ins: ir::InsCall::new(dst, ir::FunAddress(0), args),
-                fn_name: fun.to_string(),
-            }),
-            label,
-        );
-    }
-
-    pub fn ins_call_addr(
-        &mut self,
-        dst: ir::RegId,
-        fun: ir::FunAddress,
-        args: Vec<ir::RegId>,
-        label: Option<&str>,
-    ) {
-        self.append_ins(ir::Ins::Call(ir::InsCall::new(dst, fun, args)), label);
-    }
-
-    pub fn ins_ret(&mut self, src: ir::RegId, label: Option<&str>) {
-        self.append_ins(ir::Ins::Ret(ir::InsRet::new(src)), label);
-    }
-
-    fn add_unresolved(&mut self, ins: UnresolvedIns, label: Option<&str>) {
-        let fun = self
-            .current_fun
-            .as_mut()
-            .expect("Cannot insert instruction: no current function");
-        fun.add_ins(ins, label);
-    }
-
-    fn gen_fun_addr(&mut self) -> ir::FunAddress {
-        let res = ir::FunAddress(self.next_fun_addr);
-        self.next_fun_addr += 1;
-        return res;
-    }
-
-    fn gen_fun_name(&mut self) -> String {
-        let res = "f".to_string() + &self.next_fun_name.to_string();
-        self.next_fun_name += 1;
-        res
+    pub fn ins_ret(&mut self, src: ir::RegId) {
+        self.append_ins(ir::Ins::Ret(ir::InsRet::new(src)));
     }
 }

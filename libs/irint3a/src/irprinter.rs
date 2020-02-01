@@ -1,53 +1,70 @@
-use crate::ir;
-
 use std::io::Write;
 
+use crate::ir;
+use crate::irnames;
+
 pub trait CodePrintable {
-    fn print_code(&self, writer: &mut dyn Write);
+    fn print_code(&self, writer: &mut dyn Write, names: Option<&irnames::ModuleNames>);
 }
 
-impl CodePrintable for ir::ModuleExtended {
-    fn print_code(&self, writer: &mut dyn Write) {
-        let mut printer = IRPrinter::new(self);
+impl CodePrintable for ir::Module {
+    fn print_code(&self, writer: &mut dyn Write, names: Option<&irnames::ModuleNames>) {
+        let mut gen_names;
+
+        let names = match names {
+            Some(names) => names,
+            None => {
+                gen_names = Some(irnames::ModuleNames::new());
+                let names = gen_names.as_mut().unwrap();
+                names.complete_undefined(self);
+                gen_names.as_ref().unwrap()
+            }
+        };
+
+        let mut printer = IRPrinter::new(self, names);
         printer.print_mod(writer);
     }
 }
 
 struct IRPrinter<'a> {
-    module_ex: &'a ir::ModuleExtended,
     module: &'a ir::Module,
-    fun: Option<&'a ir::DefFun>,
-    fun_ex: Option<&'a ir::FunExtended>,
+    names: &'a irnames::ModuleNames,
+    fun: Option<&'a ir::Function>,
+    fun_names: Option<&'a irnames::FunctionNames>,
 }
 
 impl<'a> IRPrinter<'a> {
-    fn new(module_ex: &'a ir::ModuleExtended) -> Self {
+    fn new(module: &'a ir::Module, names: &'a irnames::ModuleNames) -> Self {
         IRPrinter {
-            module_ex,
-            module: module_ex.module(),
+            module,
+            names,
             fun: None,
-            fun_ex: None,
+            fun_names: None,
         }
     }
 
     fn print_mod(&mut self, writer: &mut dyn Write) {
-        for fun in self.module.defs() {
-            let fun_ex = self.module_ex.get_fun(fun.addr());
+        for fun in self.module.funs() {
             self.fun = Some(fun);
-            self.fun_ex = Some(fun_ex);
+            self.fun_names = Some(self.names.get_function(fun.id()).unwrap());
             self.print_fun(writer);
             write!(writer, "\n").unwrap();
         }
     }
 
     fn print_fun(&self, writer: &mut dyn Write) {
-        let f = self.fun.unwrap();
-        let f_ex = self.fun_ex.unwrap();
-        let fn_id = f.addr();
+        let fun = self.fun.unwrap();
+        let fun_id = fun.id();
 
-        write!(writer, "define {} {} ", fn_id.0, f_ex.name()).unwrap();
+        write!(
+            writer,
+            "define {} {} ",
+            fun_id.0,
+            self.names.get_function_name(fun_id).unwrap()
+        )
+        .unwrap();
 
-        if f.body().is_some() {
+        if !fun.is_extern() {
             write!(writer, "\n").unwrap();
             self.print_body(writer);
             write!(writer, "\n").unwrap();
@@ -57,18 +74,24 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_body(&self, writer: &mut dyn Write) {
-        let f = self.fun.unwrap();
-        let f_ex = self.fun_ex.unwrap();
+        let fun = self.fun.unwrap();
+        let fun_names = self.fun_names.unwrap();
 
-        for (id, ins) in f.body().unwrap().iter().enumerate() {
-            if let Some(ins_label) = f_ex.label_of(ir::LocalLabel(id)) {
-                if id != 0 {
-                    write!(writer, "\n").unwrap();
-                }
+        for bb_id in fun.basic_blocks_list() {
+            let bb = fun.get_basic_block(*bb_id);
+            write!(
+                writer,
+                "{}:\n",
+                fun_names.get_basic_block_name(*bb_id).unwrap()
+            )
+            .unwrap();
+            self.print_bb(bb, writer);
+            write!(writer, "\n").unwrap();
+        }
+    }
 
-                write!(writer, "{}:\n", ins_label).unwrap();
-            }
-
+    fn print_bb(&self, bb: &ir::BasicBlock, writer: &mut dyn Write) {
+        for ins in bb.iter() {
             write!(writer, "  ").unwrap();
             self.print_ins(ins, writer);
             write!(writer, "\n").unwrap();
@@ -150,28 +173,32 @@ impl<'a> IRPrinter<'a> {
     }
 
     fn print_ins_jump(&self, ins: &ir::InsJump, writer: &mut dyn Write) {
-        let f_ex = self.fun_ex.unwrap();
-        let label_name = f_ex.label_of(ins.label()).unwrap();
-        write!(writer, "jump {}", label_name).unwrap();
+        let fun_names = self.fun_names.unwrap();
+
+        let dst_name = fun_names.get_basic_block_name(ins.dst()).unwrap();
+        write!(writer, "jump {}", dst_name).unwrap();
     }
 
     fn print_ins_br(&self, ins: &ir::InsBr, writer: &mut dyn Write) {
-        let f_ex = self.fun_ex.unwrap();
-        let label_true = f_ex.label_of(ins.label_true()).unwrap();
-        let label_false = f_ex.label_of(ins.label_false()).unwrap();
+        let fun_names = self.fun_names.unwrap();
+
+        let dst_true_name = fun_names.get_basic_block_name(ins.dst_true()).unwrap();
+        let dst_false_name = fun_names.get_basic_block_name(ins.dst_false()).unwrap();
+
         write!(
             writer,
             "br %{}, {}, {}",
             ins.src().0,
-            label_true,
-            label_false
+            dst_true_name,
+            dst_false_name
         )
         .unwrap();
     }
 
     fn print_ins_call(&self, ins: &ir::InsCall, writer: &mut dyn Write) {
-        let fn_name = self.module_ex.get_fun(ins.fun()).name();
-        write!(writer, "call %{}, {}", ins.dst().0, fn_name).unwrap();
+        let fun_name = self.names.get_function_name(ins.fun()).unwrap();
+
+        write!(writer, "call %{}, {}", ins.dst().0, fun_name).unwrap();
         for arg in ins.args() {
             write!(writer, ", %{}", arg.0).unwrap();
         }

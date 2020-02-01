@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 // Basic rules about the IR
 //
@@ -29,6 +28,21 @@ use std::collections::HashSet;
 // This only concern IR file syntax
 // To refer to the function with the call instruction, we simply use it's function identifier
 
+/// Registers are represented by a unique usize identifier
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct RegId(pub usize);
+
+/// BasicBlock unique identifier
+/// Every basic block in a module as a different identifier
+/// It's used to manipulate and move around basic blocks more easily (without using the whole structure)
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct BasicBlockId(pub usize);
+
+/// Function unique identifier
+/// It's used to reference a function without having to manipulate the whole structure
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct FunctionId(pub usize);
+
 /// Represent a simple IR instruction
 #[derive(Clone, Debug)]
 pub enum Ins {
@@ -45,21 +59,14 @@ pub enum Ins {
     Ret(InsRet),
 }
 
-/// In the IR, registers are represented by a unique usize identifier
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct RegId(pub usize);
-
-/// Represent a label to an instruction in the current function
-/// Used for the br jump instructions, to refer to where we want to jump
-/// It's an index in the list of instructions of the function
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct LocalLabel(pub usize);
-
-/// Represent an address to a local or extern function
-/// Its actually the unique identifier of the function
-/// This address is always known (no resolving needed later)
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct FunAddress(pub usize);
+impl Ins {
+    pub fn is_control_flow(&self) -> bool {
+        match self {
+            Ins::Jump(_) | Ins::Br(_) | Ins::Ret(_) => true,
+            _ => false,
+        }
+    }
+}
 
 /// Instruction movi
 /// Move constant integer into a register
@@ -266,40 +273,48 @@ impl InsCmpbin {
 }
 
 /// Instruction jump
-/// Unconditional jump to some other part of the function code
-/// jump <label>
+/// Unconditional jump to a basic block
+/// The basic block must belong to the current function
+/// (checked with validator module)
+///
+/// Suntax:
+/// jump <bb-id>
 #[derive(Clone, Copy, Debug)]
 pub struct InsJump {
-    label: LocalLabel,
+    dst: BasicBlockId,
 }
 
 impl InsJump {
-    pub fn new(label: LocalLabel) -> Self {
-        InsJump { label }
+    pub fn new(dst: BasicBlockId) -> Self {
+        InsJump { dst }
     }
 
-    pub fn label(&self) -> LocalLabel {
-        self.label
+    pub fn dst(&self) -> BasicBlockId {
+        self.dst
     }
 }
 
 /// Instruction Br
 /// Conditional jump depending on value of register src
-/// If value != 0, jump to labeltrue, otherwhise to labelfalse
-/// br <regsrc>, <labeltrue>, <labelfalse>
+/// If value != 0, jump to dst-true, otherwhise to dst-false
+/// The basic blocks must belong to the current function
+/// (checked with validator module)
+///
+/// Syntax:
+/// br <src-reg>, <dst-true-bb-id>, <dst-false-bb-id>
 #[derive(Clone, Copy, Debug)]
 pub struct InsBr {
     src: RegId,
-    label_true: LocalLabel,
-    label_false: LocalLabel,
+    dst_true: BasicBlockId,
+    dst_false: BasicBlockId,
 }
 
 impl InsBr {
-    pub fn new(src: RegId, label_true: LocalLabel, label_false: LocalLabel) -> Self {
+    pub fn new(src: RegId, dst_true: BasicBlockId, dst_false: BasicBlockId) -> Self {
         InsBr {
             src,
-            label_true,
-            label_false,
+            dst_true,
+            dst_false,
         }
     }
 
@@ -307,27 +322,31 @@ impl InsBr {
         self.src
     }
 
-    pub fn label_true(&self) -> LocalLabel {
-        self.label_true
+    pub fn dst_true(&self) -> BasicBlockId {
+        self.dst_true
     }
 
-    pub fn label_false(&self) -> LocalLabel {
-        self.label_false
+    pub fn dst_false(&self) -> BasicBlockId {
+        self.dst_false
     }
 }
 
 /// Instruction call
 /// Call specified function with arguments stored in given args registers, and store return value in dst register
-/// call <dstreg>, <fun>, <arg1reg>, <arg2reg>, ...
+/// The function id must exit in the current Module
+/// (checked with validator module)
+///
+/// Syntax:
+/// call <dst-reg>, <fun-id>, <arg1-reg>, <arg2-reg>, ...
 #[derive(Clone, Debug)]
 pub struct InsCall {
     dst: RegId,
-    fun: FunAddress,
+    fun: FunctionId,
     args: Vec<RegId>,
 }
 
 impl InsCall {
-    pub fn new(dst: RegId, fun: FunAddress, args: Vec<RegId>) -> Self {
+    pub fn new(dst: RegId, fun: FunctionId, args: Vec<RegId>) -> Self {
         InsCall { dst, fun, args }
     }
 
@@ -335,7 +354,7 @@ impl InsCall {
         self.dst
     }
 
-    pub fn fun(&self) -> FunAddress {
+    pub fn fun(&self) -> FunctionId {
         self.fun
     }
 
@@ -346,6 +365,8 @@ impl InsCall {
 
 /// Instruction ret
 /// Stop the current function, and return the value in the register src
+///
+/// Syntax:
 /// ret <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsRet {
@@ -362,171 +383,268 @@ impl InsRet {
     }
 }
 
-/// Function Definition
-/// There is no arguments numbers, all passed arguments are simply stored in registers
-/// Functions with no body are extern, the code might be resolved later
-/// They have an unisgned unique identifier
+/// A Basic block is an ordered sequence of instructions that must end with a control flow instruction.
+/// This rule is not enforced by the struct implementation, but by an extern validation module.
+/// It's possible to insert or remove instructions anywhere from the list,
+/// to change the position of one instruction, or to mutate one instruction
+pub struct BasicBlock {
+    id: BasicBlockId,
+    fun_id: FunctionId,
+    ins_list: Vec<Ins>,
+}
+
+impl BasicBlock {
+    fn new(id: BasicBlockId, fun_id: FunctionId) -> Self {
+        BasicBlock {
+            id,
+            fun_id,
+            ins_list: vec![],
+        }
+    }
+
+    pub fn id(&self) -> BasicBlockId {
+        self.id
+    }
+
+    pub fn fun_id(&self) -> FunctionId {
+        self.fun_id
+    }
+
+    /// Returns the number of instructions
+    pub fn size(&self) -> usize {
+        self.ins_list.len()
+    }
+
+    pub fn get_ins(&self, idx: usize) -> &Ins {
+        &self.ins_list[idx]
+    }
+
+    pub fn get_ins_mut(&mut self, idx: usize) -> &mut Ins {
+        &mut self.ins_list[idx]
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<Ins> {
+        self.ins_list.as_slice().iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<Ins> {
+        self.ins_list.as_mut_slice().iter_mut()
+    }
+
+    /// Add an instruction at the end of the basic block
+    pub fn push_ins(&mut self, ins: Ins) {
+        self.ins_list.push(ins);
+    }
+
+    /// Remove the final instruction of the basic block
+    pub fn pop_ins(&mut self) {
+        self.ins_list.pop().unwrap();
+    }
+
+    /// Insert instruction `ins` at the position `idx`, all other instructions after will be shifted to the right
+    pub fn insert_ins(&mut self, idx: usize, ins: Ins) {
+        self.ins_list.insert(idx, ins);
+    }
+
+    /// Remove instruction at the position `idx`, all other instructions after will be shifted to the left
+    pub fn remove_ins(&mut self, idx: usize) {
+        self.ins_list.remove(idx);
+    }
+
+    /// Move the instruction at the position `old_idx` to the position `new_idx`, shifting instructions in between.
+    pub fn move_ins(&mut self, old_idx: usize, new_idx: usize) {
+        let ins = self.ins_list.remove(old_idx);
+        self.ins_list.insert(new_idx, ins);
+    }
+}
+
+/// Function definition
+/// A function has no types or registers, it simply pass argument and return values through registers as it wants
+/// A function can be extern: only a declaration, no code
 ///
+/// A function is an ordered sequence of basic block
+/// It's possible to insert, remove and change the order of basic blocks
+/// The basic block at position 0 is the entry point of the function
+/// The ordering after 0 doesn't change program execution, only the display of code
+///
+/// Syntax:
 /// Writing a local function syntax is:
 /// define <addr> <name> <body>
 /// For extern functions syntax is:
 /// define <addr> <name> extern
-pub struct DefFun {
-    addr: FunAddress,
-    body: Option<Vec<Ins>>, //if no body, function is extern
+pub struct Function {
+    id: FunctionId,
+    is_extern: bool,
+    bbs: HashMap<BasicBlockId, BasicBlock>,
+    bbs_list: Vec<BasicBlockId>,
 }
 
-impl DefFun {
-    pub fn new(addr: FunAddress, body: Option<Vec<Ins>>) -> Self {
-        DefFun { addr, body }
+impl Function {
+    fn new(id: FunctionId, is_extern: bool) -> Self {
+        Function {
+            id,
+            is_extern,
+            bbs: HashMap::new(),
+            bbs_list: vec![],
+        }
     }
 
-    pub fn addr(&self) -> FunAddress {
-        self.addr
-    }
-
-    pub fn body(&self) -> Option<&Vec<Ins>> {
-        self.body.as_ref()
+    pub fn id(&self) -> FunctionId {
+        self.id
     }
 
     pub fn is_extern(&self) -> bool {
-        self.body.is_none()
+        self.is_extern
+    }
+
+    pub fn basic_blocks_list(&self) -> &[BasicBlockId] {
+        assert!(!self.is_extern);
+        &self.bbs_list
+    }
+
+    pub fn get_basic_block(&self, id: BasicBlockId) -> &BasicBlock {
+        assert!(!self.is_extern);
+        self.bbs.get(&id).unwrap()
+    }
+
+    pub fn get_basic_block_mut(&mut self, id: BasicBlockId) -> &mut BasicBlock {
+        assert!(!self.is_extern);
+        self.bbs.get_mut(&id).unwrap()
+    }
+
+    /// Return the position of a basic blocks in the ordered sequence
+    pub fn get_basic_block_pos(&mut self, id: BasicBlockId) -> usize {
+        assert!(!self.is_extern);
+        self.bbs_list.iter().position(|x| *x == id).unwrap()
+    }
+
+    /// Move the basicblock at the position `old_idx` to the position `new_idx`, shifting basicblocks in between.
+    pub fn move_basic_block(&mut self, old_idx: usize, new_idx: usize) {
+        assert!(!self.is_extern);
+        let bb = self.bbs_list.remove(old_idx);
+        self.bbs_list.insert(new_idx, bb);
+    }
+
+    /// Change the entry point of the function, shifting right all basic blocks before `id`
+    /// `id` must refer to a basic block already in the function
+    pub fn set_entry_point(&mut self, id: BasicBlockId) {
+        assert!(!self.is_extern);
+        let pos = self.get_basic_block_pos(id);
+        self.move_basic_block(pos, 0);
+    }
+
+    fn add_basic_block(&mut self, bb_id: BasicBlockId) {
+        assert!(!self.is_extern);
+        let bb = BasicBlock::new(bb_id, self.id);
+        self.bbs.insert(bb_id, bb);
+        self.bbs_list.push(bb_id);
+    }
+
+    fn remove_basic_block(&mut self, id: BasicBlockId) {
+        assert!(!self.is_extern);
+        self.bbs.remove(&id).unwrap();
+        let pos = self.get_basic_block_pos(id);
+        self.bbs_list.remove(pos);
     }
 }
 
 /// A module represent the whole definition of an IR file
-/// It's simply a list of functions.
-/// A module must have a function wirh id 0, this is the entry point
+/// It's a sequence of functions
+/// It's possible to add or remove functions
+/// Remove a function also remove all the basic blocks
+/// You also need to use this class if you want to add/remove a basic block for a function
 pub struct Module {
-    defs: Vec<DefFun>,
-    defs_mapping: HashMap<usize, usize>,
+    funs: Vec<Function>,
+    funs_by_id: HashMap<FunctionId, usize>, //value is the index in funs vector
+    fun_of_bb: HashMap<BasicBlockId, FunctionId>, //find the function a bb belongs to
+    next_bb_id: usize,
 }
 
 impl Module {
-    pub fn new(defs: Vec<DefFun>) -> Self {
-        let mut res = Module {
-            defs,
-            defs_mapping: HashMap::new(),
-        };
-        res.init();
-        res
-    }
-
-    pub fn defs(&self) -> &Vec<DefFun> {
-        &self.defs
-    }
-
-    pub fn get_fun(&self, addr: FunAddress) -> Option<&DefFun> {
-        let fun_idx = self.defs_mapping.get(&addr.0)?;
-        self.defs.get(*fun_idx)
-    }
-
-    fn init(&mut self) {
-        for (idx, fun) in self.defs.iter().enumerate() {
-            self.defs_mapping.insert(fun.addr().0, idx);
+    pub fn new() -> Self {
+        Module {
+            funs: vec![],
+            funs_by_id: HashMap::new(),
+            fun_of_bb: HashMap::new(),
+            next_bb_id: 1,
         }
     }
-}
 
-/// Module with extra metadedata
-/// This are fur debug perposes, it contains function names
-pub struct ModuleExtended {
-    module: Module,
-    funs: HashMap<FunAddress, FunExtended>,
-}
-
-impl ModuleExtended {
-    pub fn new(module: Module, funs: HashMap<FunAddress, FunExtended>) -> Self {
-        let mut res = ModuleExtended { module, funs };
-        res.fill_funs();
-
-        for def in res.module.defs() {
-            let fn_ex = res.funs.get_mut(&def.addr()).unwrap();
-            fn_ex.fill(def);
-        }
-
-        res
+    pub fn funs(&self) -> &[Function] {
+        &self.funs
     }
 
-    pub fn module(&self) -> &Module {
-        &self.module
+    pub fn get_fun(&self, id: FunctionId) -> Option<&Function> {
+        let idx = *self.funs_by_id.get(&id)?;
+        Some(&self.funs[idx])
     }
 
-    pub fn keep_module(self) -> Module {
-        self.module
+    pub fn get_fun_mut(&mut self, id: FunctionId) -> Option<&mut Function> {
+        let idx = *self.funs_by_id.get(&id)?;
+        Some(&mut self.funs[idx])
     }
 
-    pub fn get_fun(&self, addr: FunAddress) -> &FunExtended {
-        self.funs.get(&addr).unwrap()
+    pub fn get_fun_mut2(&mut self, id: FunctionId) -> &mut Function {
+        let idx = *self.funs_by_id.get(&id).unwrap();
+        &mut self.funs[idx]
     }
 
-    fn fill_funs(&mut self) {
-        let mut def_idx = 1;
-        for def in &self.module.defs {
-            if self.funs.get(&def.addr()).is_none() {
-                let fn_name = format!("f{}", def_idx);
-                def_idx += 1;
-                self.funs.insert(
-                    def.addr(),
-                    FunExtended::new(def.addr(), fn_name, HashMap::new()),
-                );
+    /// Returns the id of the function that owns the basic block
+    pub fn get_basic_block_owner(&self, id: BasicBlockId) -> FunctionId {
+        *self.fun_of_bb.get(&id).unwrap()
+    }
+
+    /// Create a new empty non-extern function
+    /// `id` optional id for the new function, if none, one is generated
+    pub fn create_function(&mut self, id: Option<FunctionId>) -> FunctionId {
+        let id = id.unwrap_or(self.gen_fun_id());
+        self.create_new_function(id, false);
+        id
+    }
+
+    /// Create an extern function
+    pub fn create_extern_function(&mut self, id: FunctionId) {
+        self.create_new_function(id, true);
+    }
+
+    /// Add a new empty basic block at the end of the function `fun`,
+    pub fn create_basic_block(&mut self, fun_id: FunctionId) -> BasicBlockId {
+        let bb_id = self.gen_bb_id();
+        let fun = self.get_fun_mut(fun_id).unwrap();
+        fun.add_basic_block(bb_id);
+        self.fun_of_bb.insert(bb_id, fun_id);
+        bb_id
+    }
+
+    /// Remove the basic block `bb_id` belonging to the function `fun_id`
+    pub fn remove_basic_block(&mut self, bb_id: BasicBlockId, fun_id: FunctionId) {
+        let fun = self.get_fun_mut(fun_id).unwrap();
+        fun.remove_basic_block(bb_id);
+        self.fun_of_bb.remove(&bb_id).unwrap();
+    }
+
+    fn create_new_function(&mut self, id: FunctionId, is_extern: bool) {
+        assert!(self.funs_by_id.get(&id).is_none());
+        let fun = Function::new(id, is_extern);
+        let fun_idx = self.funs.len();
+        self.funs.push(fun);
+        self.funs_by_id.insert(id, fun_idx);
+    }
+
+    fn gen_fun_id(&self) -> FunctionId {
+        let mut next_id = FunctionId(1000 + self.funs().len());
+        loop {
+            if self.funs_by_id.get(&next_id).is_none() {
+                break;
             }
+            next_id.0 += 1;
         }
-    }
-}
-
-pub struct FunExtended {
-    addr: FunAddress,
-    name: String,
-    labels: HashMap<LocalLabel, String>,
-}
-
-impl FunExtended {
-    pub fn new(addr: FunAddress, name: String, labels: HashMap<LocalLabel, String>) -> Self {
-        FunExtended { addr, name, labels }
+        next_id
     }
 
-    pub fn addr(&self) -> FunAddress {
-        self.addr
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn label_of(&self, id: LocalLabel) -> Option<&String> {
-        self.labels.get(&id)
-    }
-
-    // gives generated names (L1, L2, etc) to all instructions with a JUMP points
-    fn fill(&mut self, fun: &DefFun) {
-        if fun.body().is_none() {
-            return;
-        }
-
-        let mut need_labels = HashSet::new();
-
-        for ins in fun.body().unwrap() {
-            match ins {
-                Ins::Jump(ins) => {
-                    need_labels.insert(ins.label().0);
-                }
-                Ins::Br(ins) => {
-                    need_labels.insert(ins.label_true().0);
-                    need_labels.insert(ins.label_false().0);
-                }
-                _ => {}
-            }
-        }
-
-        let mut need_labels: Vec<usize> = need_labels.into_iter().collect();
-        need_labels.sort();
-
-        let mut label_idx = 1;
-        for ins_idx in need_labels {
-            let label_name = format!("L{}", label_idx);
-            label_idx += 1;
-            self.labels.insert(LocalLabel(ins_idx), label_name);
-        }
+    fn gen_bb_id(&mut self) -> BasicBlockId {
+        let id = BasicBlockId(self.next_bb_id);
+        self.next_bb_id += 1;
+        id
     }
 }

@@ -1,7 +1,10 @@
+//pub mod basicblock;
 pub mod ir;
 pub mod irbuilder;
-pub mod irparser;
+//pub mod irparser;
+pub mod irnames;
 pub mod irprinter;
+pub mod registers;
 
 #[cfg(test)]
 mod tests {
