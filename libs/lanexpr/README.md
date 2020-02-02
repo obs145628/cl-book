@@ -1,5 +1,4 @@
-
-# lanexpr
+# LExpr (lanexpr)
 
 Programming language where everything is an expression.  
 The whole program is actually an expression that gets evaluated as the main function.  

@@ -21,7 +21,7 @@ Performs evaluation with or without building an AST.
 Projects:
 - `./app/mini-calc-eval`.
 
-## lanexpr
+## LExpr (lanexpr)
 
 Language with only int32 type, where everything is a value. Can do functions, variables, scopes, if, loops.
 
