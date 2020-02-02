@@ -12,3 +12,10 @@ Instructions:
 - control flow: jump, br, call, ret
 
 More details can be found at `src/ir.rs`
+
+## IR structure
+
+A module is a list of functions (declaration or definition).  
+Each function definition is a sequence of basic blocks.  
+Each basic block is a sequence of instructions.  
+It's possible to construct and manipulate an invalid IR, and there is a module to check the validity.

@@ -4,8 +4,7 @@ use std::collections::HashMap;
 //
 // Registers:
 // All egistrs are 32 bits
-// There is an infinite number of registers
-// Register names are %0, %1, %2, etc
+// There is an infinite number of registers, identified by a unique usize
 //
 // Datatypes:
 // The IR is not typed, but basically instructions work on 2 types of data:
@@ -19,14 +18,23 @@ use std::collections::HashMap;
 // There is no special register to set return value: it's all chosen with ret instruction
 // All the registers remain unchanged after returning from a function call (even if callee change some registers)
 //
-// Labels and Branching:
-// This only concern IR file syntax
-// We can give a label to any instruction, by preceding it with <labelname> :. labelname is any identifier
-// the jump / br instructions take this identifier to locale the right label then instruction
+// Branching:
+// Jump / Br instructions can only jump to the beginning of a basic block of the same function
 //
-// Function reference:
-// This only concern IR file syntax
-// To refer to the function with the call instruction, we simply use it's function identifier
+// Control flow instructions:
+// Instructions that cause to jump to another point in the program
+// These are the instructions Jump, Br, and Ret
+// (not call because for the caller perspective it simply goes to the next instruction)
+//
+// IR Validity
+// Every module must respect rules
+// It's possible to create an invalid IR
+// More infos about the rules and checking at irvalidation.rs
+//
+// IR Syntax
+// More infos at irparser.rs
+//
+//
 
 /// Registers are represented by a unique usize identifier
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -540,7 +548,10 @@ impl Function {
         assert!(!self.is_extern);
         let bb_id = self.gen_bb_id();
         let bb = BasicBlock::new(bb_id, self.id);
-        self.bbs.insert(bb_id, bb);
+
+        if self.bbs.insert(bb_id, bb).is_some() {
+            panic!("Internal error: there is alreay a basic block in the function with this id");
+        }
         self.bbs_list.push(bb_id);
         bb_id
     }
@@ -548,7 +559,9 @@ impl Function {
     /// Remove the basic block `id` belonging to the function`
     pub fn remove_basic_block(&mut self, id: BasicBlockId) {
         assert!(!self.is_extern);
-        self.bbs.remove(&id).unwrap();
+        if self.bbs.remove(&id).is_none() {
+            panic!("Failed to remove basic block: unknown id");
+        }
         let pos = self.get_basic_block_pos(id);
         self.bbs_list.remove(pos);
     }
@@ -606,7 +619,10 @@ impl Module {
     }
 
     fn create_new_function(&mut self, id: FunctionId, is_extern: bool) {
-        assert!(self.funs_by_id.get(&id).is_none());
+        if self.funs_by_id.get(&id).is_some() {
+            panic!("Module already has a function with id #{}", id.0);
+        }
+
         let fun = Function::new(id, is_extern);
         let fun_idx = self.funs.len();
         self.funs.push(fun);

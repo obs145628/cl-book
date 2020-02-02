@@ -1,12 +1,14 @@
 define 0 _main
-  ret %0
+L0:
+  ret %r0
 
 define 1 _add
-  alloca %2
-  alloca %3
-  store %2, %0
-  store %3, %1
-  load %4, %2
-  load %5, %3
-  add %6, %4, %5
-  ret %6
+L0:
+  alloca %r2
+  alloca %r3
+  store %r2, %r0
+  store %r3, %r1
+  load %r4, %r2
+  load %r5, %r3
+  add %r6, %r4, %r5
+  ret %r6

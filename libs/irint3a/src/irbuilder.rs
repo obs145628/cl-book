@@ -1,127 +1,5 @@
 use crate::ir;
-
-/*
-use std::collections::HashMap;
-
-struct UnresolvedJump {
-    label_name: String,
-}
-
-impl UnresolvedJump {
-    fn resolve(self, local_labels: &HashMap<String, ir::LocalLabel>) -> ir::Ins {
-        match local_labels.get(&self.label_name) {
-            Some(label) => ir::Ins::Jump(ir::InsJump::new(*label)),
-            None => panic!("Cannot resolve jump: label {} undefined", self.label_name),
-        }
-    }
-}
-
-struct UnresolvedBr {
-    ins: ir::InsBr,
-    true_name: String,
-    false_name: String,
-}
-
-impl UnresolvedBr {
-    fn resolve(self, local_labels: &HashMap<String, ir::LocalLabel>) -> ir::Ins {
-        let true_label = match local_labels.get(&self.true_name) {
-            Some(label) => *label,
-            None => panic!("Cannot resolve br: label {} undefined", self.true_name),
-        };
-        let false_label = match local_labels.get(&self.false_name) {
-            Some(label) => *label,
-            None => panic!("Cannot resolve br: label {} undefined", self.false_name),
-        };
-        ir::Ins::Br(ir::InsBr::new(self.ins.src(), true_label, false_label))
-    }
-}
-
-struct UnresolvedCall {
-    ins: ir::InsCall,
-    fn_name: String,
-}
-
-impl UnresolvedCall {
-    fn resolve(self, fun_names: &HashMap<String, ir::FunAddress>) -> ir::Ins {
-        let fn_addr = match fun_names.get(&self.fn_name) {
-            Some(addr) => *addr,
-            None => panic!("Cannot resolve call: function {} undefined", self.fn_name),
-        };
-        ir::Ins::Call(ir::InsCall::new(
-            self.ins.dst(),
-            fn_addr,
-            self.ins.args().clone(),
-        ))
-    }
-}
-
-enum UnresolvedIns {
-    Resolved(ir::Ins),
-    Jump(UnresolvedJump),
-    Br(UnresolvedBr),
-    Call(UnresolvedCall),
-}
-
-impl UnresolvedIns {
-    fn resolve(
-        self,
-        local_labels: &HashMap<String, ir::LocalLabel>,
-        fun_names: &HashMap<String, ir::FunAddress>,
-    ) -> ir::Ins {
-        match self {
-            UnresolvedIns::Resolved(ins) => ins,
-            UnresolvedIns::Jump(ins) => ins.resolve(local_labels),
-            UnresolvedIns::Br(ins) => ins.resolve(local_labels),
-            UnresolvedIns::Call(ins) => ins.resolve(fun_names),
-        }
-    }
-}
-
-struct FunBuilder {
-    addr: ir::FunAddress,
-    code: Vec<UnresolvedIns>,
-    labels: HashMap<String, ir::LocalLabel>,
-}
-
-impl FunBuilder {
-    fn new(addr: ir::FunAddress) -> Self {
-        FunBuilder {
-            addr,
-            code: vec![],
-            labels: HashMap::new(),
-        }
-    }
-
-    fn get_last_pos(&self) -> ir::LocalLabel {
-        assert!(self.code.len() > 0);
-        ir::LocalLabel(self.code.len() - 1)
-    }
-
-    fn get_next_pos(&self) -> ir::LocalLabel {
-        ir::LocalLabel(self.code.len())
-    }
-
-    fn add_ins(&mut self, ins: UnresolvedIns, label: Option<&str>) {
-        if let Some(label_name) = label {
-            let label = ir::LocalLabel(self.code.len());
-            self.labels.insert(label_name.to_string(), label);
-        }
-
-        self.code.push(ins)
-    }
-
-    fn build(mut self, fun_names: &HashMap<String, ir::FunAddress>) -> ir::DefFun {
-        let mut code = vec![];
-        std::mem::swap(&mut code, &mut self.code);
-
-        let code = code
-            .into_iter()
-            .map(|ins| ins.resolve(&self.labels, fun_names))
-            .collect();
-        ir::DefFun::new(self.addr, Some(code))
-    }
-}
-*/
+use crate::irvalidation;
 
 /// An IRBuilder is linked to a function, and can manipulate basic blocks / instructions
 /// in a more convenient way that by just modifying the Function
@@ -161,6 +39,12 @@ impl<'a> IRBuilder<'a> {
     ///Create a basic block at the end of the function
     pub fn create_basic_block(&mut self) -> ir::BasicBlockId {
         self.fun.create_basic_block()
+    }
+
+    /// run the validation on the current function
+    /// panic is the function is invalid
+    pub fn validate(&self) {
+        irvalidation::validate_function(self.fun, None);
     }
 
     /// Append an instruction at the insert point

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use irint3a::ir;
 use irint3a::irbuilder::IRBuilder;
 use irint3a::irnames;
+use irint3a::irvalidation;
 
 use crate::ast;
 use crate::ast::AST;
@@ -62,6 +63,8 @@ impl<'a> Translater<'a> {
         // 6) Generate code for the start function
         self.gen_start_fun();
 
+        // 7) Finish module
+        irvalidation::validate_module(&self.module);
         (self.module, self.names)
     }
 

@@ -61,7 +61,7 @@ fn read_ref_file(path: &str) -> Vec<u8> {
     res
 }
 
-fn compile_lanexpr(path: &str) -> ir::ModuleExtended {
+fn compile_lanexpr(path: &str) -> ir::Module {
     let mut ps = lanexpr::parser::Parser::new_from_file(path);
     let root = ps.parse();
 
@@ -70,11 +70,11 @@ fn compile_lanexpr(path: &str) -> ir::ModuleExtended {
     let ba = tc.get_bindings();
 
     let tr = lanexpr::translater::irint3a::Translater::new(&root, &ba);
-    tr.translate()
+    tr.translate().0
 }
 
 fn exec_lanexpr_file(path: &str) -> Vec<u8> {
-    let code = compile_lanexpr(path).keep_module();
+    let code = compile_lanexpr(path);
     let mut rt = runtime::Runtime::new(code);
     rt.run();
     Vec::from(rt.stdout())

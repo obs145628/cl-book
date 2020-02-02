@@ -69,8 +69,16 @@ impl Frame {
 // A code address is representation by the function and the instruction index in the function
 #[derive(Clone, Debug)]
 struct CodeAddress {
-    fun: ir::FunAddress,
-    pos: ir::LocalLabel,
+    fun: ir::FunctionId,
+    bb: ir::BasicBlockId,
+    pos: usize, //offset in basicblock
+}
+
+impl CodeAddress {
+    pub fn jump_to_bb(&mut self, id: ir::BasicBlockId) {
+        self.bb = id;
+        self.pos = 0;
+    }
 }
 
 // Only local variables on the stack are addressable
@@ -128,10 +136,7 @@ impl Runtime {
         self.stdout.clear();
         self.ins_status = None;
 
-        self.call_stack.push(CodeAddress {
-            fun: ir::FunAddress(0),
-            pos: ir::LocalLabel(0),
-        });
+        self.call_stack.push(self.begin_of_fun(ir::FunctionId(0)));
         self.frames.push(Frame::new());
     }
 
@@ -161,10 +166,8 @@ impl Runtime {
         self.code
             .get_fun(addr.fun)
             .expect("Failed to get instruction: invalid function address")
-            .body()
-            .expect("Failed to get instruction: function is extern")
-            .get(addr.pos.0)
-            .expect("Failed to get instruction: invalid position address")
+            .get_basic_block(addr.bb)
+            .get_ins(addr.pos)
     }
 
     // Return the current instruction, doesn't move the pc
@@ -175,7 +178,7 @@ impl Runtime {
     // Simply go to the following instruction in the code (doesn't do any branch / call)
     fn next_ins(&mut self) {
         let addr = self.call_stack.last_mut().unwrap();
-        addr.pos.0 += 1;
+        addr.pos += 1;
     }
 
     fn get_mem(&self, addr: &MemAddress) -> &RTVal {
@@ -214,6 +217,16 @@ impl Runtime {
     // Get register value on the current frame
     fn set_reg(&mut self, reg: ir::RegId, val: RTVal) {
         self.frames.last_mut().unwrap().set_reg(reg, val);
+    }
+
+    fn begin_of_fun(&self, fun_id: ir::FunctionId) -> CodeAddress {
+        let fun = self.code.get_fun(fun_id).unwrap();
+        let bb_id = fun.basic_blocks_list()[0];
+        CodeAddress {
+            fun: fun_id,
+            bb: bb_id,
+            pos: 0,
+        }
     }
 
     fn exec_ins(&mut self, ins: ir::Ins) {
@@ -302,17 +315,17 @@ impl Runtime {
     }
 
     fn exec_ins_jump(&mut self, ins: ir::InsJump) {
-        self.call_stack.last_mut().unwrap().pos = ins.label();
+        self.call_stack.last_mut().unwrap().jump_to_bb(ins.dst());
     }
 
     fn exec_ins_br(&mut self, ins: ir::InsBr) {
         let cond_val = self.get_reg(ins.src());
-        let next_label = if cond_val.0 != 0 {
-            ins.label_true()
+        let next_bb = if cond_val.0 != 0 {
+            ins.dst_true()
         } else {
-            ins.label_false()
+            ins.dst_false()
         };
-        self.call_stack.last_mut().unwrap().pos = next_label;
+        self.call_stack.last_mut().unwrap().jump_to_bb(next_bb);
     }
 
     fn exec_ins_call(&mut self, ins: ir::InsCall) {
@@ -329,10 +342,7 @@ impl Runtime {
         }
 
         self.frames.push(Frame::new_from_call(&args, ins.dst()));
-        self.call_stack.push(CodeAddress {
-            fun: ins.fun(),
-            pos: ir::LocalLabel(0),
-        });
+        self.call_stack.push(self.begin_of_fun(ins.fun()));
     }
 
     fn exec_ins_ret(&mut self, ins: ir::InsRet) {
@@ -348,7 +358,7 @@ impl Runtime {
         self.set_reg(ret_reg, ret_val);
     }
 
-    fn call_native(&mut self, fun: ir::FunAddress, args: Vec<RTVal>) {
+    fn call_native(&mut self, fun: ir::FunctionId, args: Vec<RTVal>) {
         match fun.0 {
             257 => self.call_native_putc(args),
             258 => self.call_native_exit(args),

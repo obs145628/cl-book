@@ -4,60 +4,63 @@ define 257 _putchar extern
 define 258 _exit extern
 
 define 0 _main
-  movi %1, 42
-  call %0, _iprint, %1
-  movi %1, 10
-  call %0, _putchar, %1
-  movi %1, 0
-  call %0, _exit, %1
-  ret %0
+L0:
+  movi %r1, 42
+  call %r0, _iprint, %r1
+  movi %r1, 10
+  call %r0, _putchar, %r1
+  movi %r1, 0
+  call %r0, _exit, %r1
+  ret %r0
 
 define 1 _iprint_rec
-  alloca %1
-  store %1, %0
-  load %2, %1
-  movi %3, 0
-  cmpeq %4, %2, %3
-  br %4, Lend, Lrec
+L0:
+  alloca %r1
+  store %r1, %r0
+  load %r2, %r1
+  movi %r3, 0
+  cmpeq %r4, %r2, %r3
+  br %r4, Lend, Lrec
 
 Lrec:
-  load %2, %1
-  movi %3, 10
-  div %4, %2, %3
-  mod %5, %2, %3
-  call %0, _iprint_rec, %4
-  movi %6, 48
-  add %7, %5, %6
-  call %0, _putchar, %7
+  load %r2, %r1
+  movi %r3, 10
+  div %r4, %r2, %r3
+  mod %r5, %r2, %r3
+  call %r0, _iprint_rec, %r4
+  movi %r6, 48
+  add %r7, %r5, %r6
+  call %r0, _putchar, %r7
 
 Lend:
-  ret %0
+  ret %r0
 
 define 2 _iprint
-  alloca %1
-  store %1, %0
-  load %2, %1
-  movi %3, 0
-  cmplt %4, %2, %3
-  br %4, Lneg, Lnext
+L0:
+  alloca %r1
+  store %r1, %r0
+  load %r2, %r1
+  movi %r3, 0
+  cmplt %r4, %r2, %r3
+  br %r4, Lneg, Lnext
 
 Lneg:
-  sub %4, %3, %2
-  call %0, _iprint_rec, %4
+  sub %r4, %r3, %r2
+  call %r0, _iprint_rec, %r4
   jump Lend
 
 Lnext:
-  cmpeq %4, %2, %3
-  br %4, Lnull, Lpos
+  cmpeq %r4, %r2, %r3
+  br %r4, Lnull, Lpos
 
 Lnull:
-  movi %4, 48
-  call %0, _putchar, %4
+  movi %r4, 48
+  call %r0, _putchar, %r4
   jump Lend
 
 Lpos:
-  call %0, _iprint_rec, %2
+  call %r0, _iprint_rec, %r2
   jump Lend
 
 Lend:
-  ret %0
+  ret %r0

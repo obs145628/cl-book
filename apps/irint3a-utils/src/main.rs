@@ -4,10 +4,11 @@ use clap::{App, Arg};
 use std::io::Write;
 
 use interp_irint3a::runtime;
-use irint3a::irparser::Parser;
+//use irint3a::irparser::Parser;
 use irint3a::irprinter::CodePrintable;
 
 fn main() {
+    /*
     let matches = App::new("irint3a-utils")
         .version("0.1.0")
         .author("Steven Lariau <obs145628@gmail.com>")
@@ -41,4 +42,5 @@ fn main() {
         std::io::stdout().write_all(rt.stdout()).unwrap();
         std::process::exit(ret_code.get_val());
     }
+    */
 }
