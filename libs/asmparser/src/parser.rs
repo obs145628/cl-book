@@ -4,6 +4,7 @@ use crate::lexer::{Lexer, Token};
 #[derive(Debug)]
 pub enum InsArg {
     Const(u64),     // <uint>
+    Name(String),   // <str>
     IdInt(u64),     // %<uint>
     IdName(String), // %<str>
 }
@@ -154,8 +155,12 @@ impl Parser {
     fn parse_ins_arg(&self, arg: &str) -> InsArg {
         let firstc = arg.chars().next().expect("Empty instruction argument");
         let is_id = firstc == '%';
+
         if !is_id {
-            return InsArg::Const(arg.parse().expect("Invalid argument"));
+            return match arg.parse::<u64>() {
+                Ok(val) => InsArg::Const(val),
+                Err(_) => InsArg::Name(arg.to_string()),
+            };
         }
 
         let id_val = &arg[1..];

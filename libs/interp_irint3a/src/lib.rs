@@ -6,8 +6,8 @@ mod tests {
     use super::*;
 
     pub fn run_file(path: &str, expected: &str) {
-        let ps = irint3a::irparser::Parser::new_from_file(path);
-        let module = ps.parse().keep_module();
+        let ps = irint3a::irparser::Parser::from_file(path);
+        let (module, _name) = ps.build();
 
         let mut rt = runtime::Runtime::new(module);
         rt.run();

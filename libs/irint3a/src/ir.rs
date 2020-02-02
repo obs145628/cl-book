@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 // Basic rules about the IR
 //
 // Registers:
-// All egistrs are 32 bits
+// All registrs are 32 bits
 // There is an infinite number of registers, identified by a unique usize
 //
 // Datatypes:
@@ -33,8 +31,8 @@ use std::collections::HashMap;
 //
 // IR Syntax
 // More infos at irparser.rs
-//
-//
+
+use std::collections::HashMap;
 
 /// Registers are represented by a unique usize identifier
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -78,7 +76,6 @@ impl Ins {
 
 /// Instruction movi
 /// Move constant integer into a register
-/// movi <dstreg>, <constint>
 #[derive(Clone, Copy, Debug)]
 pub struct InsMovi {
     dst: RegId,
@@ -101,7 +98,6 @@ impl InsMovi {
 
 /// Instruction movr
 /// Copy value of one register to another
-/// movr <dstreg>, <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsMovr {
     dst: RegId,
@@ -124,7 +120,6 @@ impl InsMovr {
 
 /// Instruction load
 /// Read the 32bit address stored in src register, and load the value at that address to the register dst
-/// load <dstreg>, <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsLoad {
     dst: RegId,
@@ -147,7 +142,6 @@ impl InsLoad {
 
 /// Instruction store
 /// Read the 32bit adress stored in dst register, and store the content of src register at that address
-/// store <dstreg>, <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsStore {
     dst: RegId,
@@ -170,7 +164,6 @@ impl InsStore {
 
 /// Instruction Alloca
 /// Allocate a variable local to the function, and write it's memory address in dst register
-/// alloca <dstreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsAlloca {
     dst: RegId,
@@ -197,8 +190,7 @@ pub enum InsOpbinKind {
 
 /// Represent multiple instructions for binary operations
 /// Read int32 values from both src registers, compute and store result in dst register
-/// <ins> <dstreg>, <src1reg>, <src2reg>
-/// <ins> may be any of add, sub, mul, div, mod
+/// regroup instructions add, sub, mul, div, mod
 #[derive(Clone, Copy, Debug)]
 pub struct InsOpbin {
     kind: InsOpbinKind,
@@ -243,8 +235,7 @@ pub enum InsCmpbinKind {
 
 /// Represent multiple instructions for binary comparisons
 /// Read int32 values from both src registers, compute and store result in dst register: 1 is cmp is true, 0 if false
-/// <ins> <dstreg>, <src1reg>, <src2reg>
-/// <ins> may be any of cmpeq, cmplt, cmpgt
+/// regroup instructions cmpeq, cmplt, cmpgt
 #[derive(Clone, Copy, Debug)]
 pub struct InsCmpbin {
     kind: InsCmpbinKind,
@@ -284,9 +275,6 @@ impl InsCmpbin {
 /// Unconditional jump to a basic block
 /// The basic block must belong to the current function
 /// (checked with validator module)
-///
-/// Suntax:
-/// jump <bb-id>
 #[derive(Clone, Copy, Debug)]
 pub struct InsJump {
     dst: BasicBlockId,
@@ -307,9 +295,6 @@ impl InsJump {
 /// If value != 0, jump to dst-true, otherwhise to dst-false
 /// The basic blocks must belong to the current function
 /// (checked with validator module)
-///
-/// Syntax:
-/// br <src-reg>, <dst-true-bb-id>, <dst-false-bb-id>
 #[derive(Clone, Copy, Debug)]
 pub struct InsBr {
     src: RegId,
@@ -343,9 +328,6 @@ impl InsBr {
 /// Call specified function with arguments stored in given args registers, and store return value in dst register
 /// The function id must exit in the current Module
 /// (checked with validator module)
-///
-/// Syntax:
-/// call <dst-reg>, <fun-id>, <arg1-reg>, <arg2-reg>, ...
 #[derive(Clone, Debug)]
 pub struct InsCall {
     dst: RegId,
@@ -373,9 +355,6 @@ impl InsCall {
 
 /// Instruction ret
 /// Stop the current function, and return the value in the register src
-///
-/// Syntax:
-/// ret <srcreg>
 #[derive(Clone, Copy, Debug)]
 pub struct InsRet {
     src: RegId,
@@ -474,12 +453,6 @@ impl BasicBlock {
 /// It's possible to insert, remove and change the order of basic blocks
 /// The basic block at position 0 is the entry point of the function
 /// The ordering after 0 doesn't change program execution, only the display of code
-///
-/// Syntax:
-/// Writing a local function syntax is:
-/// define <addr> <name> <body>
-/// For extern functions syntax is:
-/// define <addr> <name> extern
 pub struct Function {
     id: FunctionId,
     is_extern: bool,

@@ -1,9 +1,9 @@
 
-define 257 _putchar extern
+.declare 257 _putchar
 
-define 258 _exit extern
+.declare 258 _exit
 
-define 0 _main
+.define 0 _main
 L0:
   movi %r1, 42
   call %r0, _iprint, %r1
@@ -13,7 +13,7 @@ L0:
   call %r0, _exit, %r1
   ret %r0
 
-define 1 _iprint_rec
+.define 1 _iprint_rec
 L0:
   alloca %r1
   store %r1, %r0
@@ -31,11 +31,12 @@ Lrec:
   movi %r6, 48
   add %r7, %r5, %r6
   call %r0, _putchar, %r7
+  jump Lend
 
 Lend:
   ret %r0
 
-define 2 _iprint
+.define 2 _iprint
 L0:
   alloca %r1
   store %r1, %r0

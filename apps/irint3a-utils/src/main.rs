@@ -4,11 +4,10 @@ use clap::{App, Arg};
 use std::io::Write;
 
 use interp_irint3a::runtime;
-//use irint3a::irparser::Parser;
+use irint3a::irparser::Parser;
 use irint3a::irprinter::CodePrintable;
 
 fn main() {
-    /*
     let matches = App::new("irint3a-utils")
         .version("0.1.0")
         .author("Steven Lariau <obs145628@gmail.com>")
@@ -27,20 +26,17 @@ fn main() {
         .get_matches();
 
     let in_path = matches.value_of("INPUT").unwrap();
-    let ps = Parser::new_from_file(&in_path);
-    let code = ps.parse();
+    let ps = Parser::from_file(&in_path);
+    let (code, names) = ps.build();
 
     if matches.occurrences_of("dump") > 0 {
-        code.print_code(&mut std::io::stdout());
-        println!("\n");
+        code.print_code(&mut std::io::stdout(), Some(&names));
     }
 
     if matches.occurrences_of("run") > 0 {
-        let code = code.keep_module();
         let mut rt = runtime::Runtime::new(code);
         let ret_code = rt.run();
         std::io::stdout().write_all(rt.stdout()).unwrap();
         std::process::exit(ret_code.get_val());
     }
-    */
 }

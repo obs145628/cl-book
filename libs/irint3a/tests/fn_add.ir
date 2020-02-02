@@ -1,8 +1,8 @@
-define 0 _main
+.define 0 _main
 L0:
   ret %r0
 
-define 1 _add
+.define 1 _add
 L0:
   alloca %r2
   alloca %r3

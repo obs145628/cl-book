@@ -56,9 +56,12 @@ impl<'a> IRPrinter<'a> {
         let fun = self.fun.unwrap();
         let fun_id = fun.id();
 
+        let define_kw = if fun.is_extern() { "declare" } else { "define" };
+
         write!(
             writer,
-            "define {} {} ",
+            ".{} {} {} ",
+            define_kw,
             fun_id.0,
             self.names.get_function_name(fun_id).unwrap()
         )
@@ -67,10 +70,8 @@ impl<'a> IRPrinter<'a> {
         if !fun.is_extern() {
             write!(writer, "\n").unwrap();
             self.print_body(writer);
-            write!(writer, "\n").unwrap();
-        } else {
-            write!(writer, "extern\n").unwrap();
         }
+        write!(writer, "\n").unwrap();
     }
 
     fn print_body(&self, writer: &mut dyn Write) {

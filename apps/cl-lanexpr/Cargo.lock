@@ -83,8 +83,7 @@ dependencies = [
 name = "irint3a"
 version = "0.1.0"
 dependencies = [
- "oblexer 0.1.0",
- "obparser 0.1.0",
+ "asmparser 0.1.0",
 ]
 
 [[package]]
