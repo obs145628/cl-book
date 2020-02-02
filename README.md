@@ -7,7 +7,8 @@ These representations will be a lot simpler and with much less features than for
 # Requirements
 
 - Rust (Tested with rustc 1.40.0)
-- LLVM (Tested with v9.0.0) (some compilers generate LLVM IR)
+- LLVM (Tested with v9.0.0) (some compilers generate LLVM IR).
+
 Tested on Ubuntu 18.04
 
 # Front-End languages
@@ -45,6 +46,7 @@ Really similar to irint3a, except that it's based on a stack-machine and doesn't
 
 Projects:
 - `./libs/irintsm`
+- `./apps/irintsm-utils`
 
 ## LLVM IR
 

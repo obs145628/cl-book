@@ -5,6 +5,7 @@ Can perform many operations:
 - typecheck a file
 - build and print the symbol tables from a file
 - convert the input to irint3a and print the IR
+- convert the input to irintsm and print the IR
 - convert the input to LLVM IR
 - compile to a standalone binary (using LLVM IR)
 

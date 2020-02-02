@@ -17,7 +17,7 @@ Interpreter for the irintsm IR
 
 # irint3a
 
-Build, parse and print IR for irint3a.
+Build, parse, validate and print IR for irint3a.
 
 # irintsm
 
@@ -25,7 +25,7 @@ Build, parse, validate and print IR for irintsm.
 
 # lanexpr
 
-Lexer, parser, AST, type-checking and def tables for lanexpr.
+Lexer, parser, AST, type-checking, def tables and IR generation for lanexpr.
 
 # oblexer
 

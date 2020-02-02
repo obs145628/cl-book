@@ -1,6 +1,6 @@
 
 Utils to manipulate IR files of irint3a.  
-It reads an input IR file, parse it, and can do one the following:
+It reads an input IR file, parse it, validates it, and can do one the following:
 - print back the parsed IR
 - run the IR with an interpreter
 

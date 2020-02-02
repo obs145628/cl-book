@@ -1,6 +1,6 @@
 
 Utils to manipulate IR files of irintsm.  
-It reads an input IR file, parse it, and can do one the following:
+It reads an input IR file, parse it, vlalidates it, and can do one the following:
 - print back the parsed IR
 - run the IR with an interpreter
 
