@@ -320,3 +320,8 @@ fn llvm_binary_basics_fact() {
 fn llvm_binary_basics_cat() {
     test_file("../../libs/lanexpr/tests/basics", "cat");
 }
+
+#[test]
+fn llvm_binary_basics_calc() {
+    test_file("../../libs/lanexpr/tests/basics", "calc");
+}

@@ -1,0 +1,275 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun err(c: int) : void = (
+    putc(69);
+    putc(58);
+    putc(c);
+    putc(10);
+    exit(1)
+  )
+
+  fun band(x: int, y: int) : int = if (x) then if (y) then 1 else 0 else 0
+
+  fun bor(x: int, y: int) : int = if (x) then 1 else if (y) then 1 else 0
+
+  fun is_wspace(x: int) : int = if (x == 9) then 1 else if (x == 10) then 1 else x == 32
+
+  fun skip_ws() : int =
+  let
+    var c : int = getc()
+  in (
+    while (is_wspace(c)) do
+      c = getc();
+    c)
+
+  fun encode_char(c: int): int =  
+   if (is_wspace(c)) then
+    18
+  else if (c == -1) then
+    0
+  else if (c == 37) then
+    5
+  else if (c == 40) then
+    6
+  else if (c == 41) then
+    7
+  else if (c == 42) then
+    3
+  else if (c == 43) then
+    1
+  else if (c == 45) then
+    2
+  else if (c == 47) then
+    4
+  else if band(c > 47, c < 58) then
+    (c - 48) + 8
+  else  (
+    err(76);
+    0
+  )
+
+  fun tok_val_is_num(tok: int): int = (tok / 128) % 2
+
+  fun tok_val_next_state(tok: int): int = tok % 128
+
+  fun tok_val_state(tok: int) : int  = tok / 65536
+
+  fun peek_tok(next_state: int): int = (
+    if (next_state == 18) then (
+      next_state = encode_char(skip_ws())
+    );
+    next_state
+  )
+
+  fun get_tok(next_state: int) : int =
+    let
+      var state : int = 0
+      var val : int = 0
+      var digit : int = 0
+      var is_num : int = 0
+    in
+    (
+      if (next_state == 18) then (
+        next_state = encode_char(skip_ws())
+      );
+
+      state = next_state;
+      val = 0;
+
+      while (band(next_state > 7, next_state < 18)) do (
+         digit = next_state - 8;
+         val = 10 * val + digit;
+         next_state = encode_char(getc())
+      );
+
+      if (state < 8) then (
+        next_state = 18
+      );		
+
+      is_num = state > 7;
+      state = (if (is_num) then val else state);
+      next_state + is_num * 128 + state * 65536
+    )
+
+  fun snum_encode(val: int) : int =
+    let
+      var sign : int = val < 0
+      var aval :int = if sign then -val else val
+    in
+      aval * 2 + sign
+
+  fun snum_decode(code: int) : int =
+    let
+      var sign: int = code % 2
+      var aval : int = code / 2
+    in
+      if sign then -aval else aval
+
+  fun snum_neg(code: int) : int =
+    let
+      var sign : int = code % 2
+      var new_sign : int = sign == 0
+    in
+      code - sign + new_sign
+
+  fun pack16(high: int, low: int) : int = high * 65536 + low
+  fun unpack16_high(val: int) : int = val / 65536
+  fun unpack16_low(val: int) : int = val % 65536
+
+  fun r_file(next_state: int) : int =
+    let
+      var val_ret : int = r_expr(next_state)
+      var tok : int = get_tok(unpack16_high(val_ret))
+    in (
+
+     if (bor(tok_val_is_num(tok), tok_val_state(tok))) then (
+        err(80)
+     );
+     pack16(tok_val_next_state(tok), unpack16_low(val_ret))
+    )
+
+  fun r_expr(next_state: int) : int = r_e3(next_state)
+
+
+  fun r_e3(next_state: int) : int =
+    let
+      var ret_val : int = r_e2(next_state)
+      var val : int = snum_decode(unpack16_low(ret_val))
+    in (
+      next_state = peek_tok(unpack16_high(ret_val));
+
+    while (bor(next_state == 1, next_state == 2)) do (
+      let
+        var tok : int = get_tok(next_state)
+	var ret_val : int = r_e2(tok_val_next_state(tok))
+      in
+      (
+        val = (
+        if (next_state == 1) then
+      	  val + snum_decode(unpack16_low(ret_val))
+        else if (next_state == 2) then
+          val - snum_decode(unpack16_low(ret_val))
+	else
+	  0
+        );
+	next_state = peek_tok(unpack16_high(ret_val))
+      )
+    );
+
+    pack16(next_state, snum_encode(val))
+  ) 
+
+
+  fun r_e2(next_state: int) : int =
+    let
+      var ret_val : int = r_e1(next_state)
+      var val : int = snum_decode(unpack16_low(ret_val))
+    in (
+      next_state = peek_tok(unpack16_high(ret_val));
+
+    while (bor(bor(next_state == 3, next_state == 4), next_state == 5)) do (
+      let
+        var tok : int = get_tok(next_state)
+	var ret_val : int = r_e1(tok_val_next_state(tok))
+      in
+      (
+        val = (
+          if (next_state == 3) then
+	    val * snum_decode(unpack16_low(ret_val))
+          else if (next_state == 4) then
+            val / snum_decode(unpack16_low(ret_val))
+          else if (next_state == 5) then
+            val % snum_decode(unpack16_low(ret_val))
+	  else
+	    0
+        );
+	next_state = peek_tok(unpack16_high(ret_val))
+      )
+    );
+
+    pack16(next_state, snum_encode(val))
+  )
+
+
+  fun r_e1(next_state: int) : int =
+    let
+      var tok : int = 0
+      var val_ret : int = 0
+      var val_ret_next_state : int = 0
+      var res_val : int = 0
+    in
+    (
+      next_state = peek_tok(next_state);
+      if (band((next_state == 1) == 0, (next_state == 2) == 0)) then
+        r_e0(next_state)
+      else (
+
+        tok = get_tok(next_state);
+	val_ret = r_e1(tok_val_next_state(tok))
+	val_ret_next_state = unpack16_high(val_ret);
+  	res_val = (if next_state == 1 then unpack16_low(val_ret)
+                                        else snum_neg(unpack16_low(val_ret)));
+	pack16(val_ret_next_state, res_val)
+      )
+    )
+
+  fun r_e0(next_state: int) : int =
+    let
+      var tok: int = 0
+      var val_ret: int = 0
+    in
+    (
+      next_state = peek_tok(next_state);
+      if (next_state == 6) then (
+
+        tok = get_tok(next_state);
+        val_ret = r_expr(tok_val_next_state(tok));
+
+ 	tok = get_tok(unpack16_high(val_ret));
+        if (bor(tok_val_is_num(tok), (tok_val_state(tok) == 7) == 0)) then (
+           err(80)
+	);
+
+        pack16(tok_val_next_state(tok), unpack16_low(val_ret))
+      )
+
+      else (
+
+        if (next_state < 8) then (
+          err(80)
+	);
+
+        tok = get_tok(next_state);
+        pack16(tok_val_next_state(tok), snum_encode(tok_val_state(tok)))
+      )
+    )
+
+  fun parse() : int = snum_decode(unpack16_low(r_file(18)))
+
+  in
+    printnl_int(parse())
