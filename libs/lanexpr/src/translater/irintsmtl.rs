@@ -145,8 +145,11 @@ impl<'a> Translater<'a> {
 
     fn add_native_defs(&mut self) {
         self.add_standard_fn("putc", ir::FunctionRef::new(257));
-        self.builder
-            .create_function(Some(ir::FunctionRef::new(258))); //exit
+        self.add_standard_fn("exit", ir::FunctionRef::new(258));
+        self.add_standard_fn("getc", ir::FunctionRef::new(259));
+        self.add_standard_fn("fmemget", ir::FunctionRef::new(260));
+        self.add_standard_fn("fmemset", ir::FunctionRef::new(261));
+        self.add_standard_fn("fmemcpy", ir::FunctionRef::new(262));
     }
 
     fn tl_expr(&mut self, node: &dyn ast::ASTExpr) -> bool {
