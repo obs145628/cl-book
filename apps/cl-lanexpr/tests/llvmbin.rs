@@ -325,3 +325,8 @@ fn llvm_binary_basics_cat() {
 fn llvm_binary_basics_calc() {
     test_file("../../libs/lanexpr/tests/basics", "calc");
 }
+
+#[test]
+fn llvm_binary_algos1_binsearch() {
+    test_file("../../libs/lanexpr/tests/algos1", "binsearch");
+}

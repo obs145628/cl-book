@@ -35,7 +35,7 @@ int getchar();
 int putchar(int);
 void exit(int);
 
-void *memcpy(void *dst, const void *src, size_t n);
+void *memmove(void *dst, const void *src, size_t n);
 
 void *malloc(size_t);
 
@@ -84,7 +84,7 @@ void _std_fmemcpy(int_t dst, int_t src, int_t n) {
   std_check(dst >= 0, "std_fmemcpy: dst negative index");
   std_check(dst + n <= STD_FMEM_SIZE, "std_fmemcpy: dst beyond fmem size");
 
-  memcpy(fmem_ptr() + dst, fmem_ptr() + src, n * sizeof(int_t));
+  memmove(fmem_ptr() + dst, fmem_ptr() + src, n * sizeof(int_t));
 }
 
 
