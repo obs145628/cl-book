@@ -9,6 +9,12 @@ Main features:
 - unary operators: +, -, !
 - constants, variables, function calls
 
+## The Flat memory
+
+The flat memory is the most important feature, but it has nothing to do with the language, it's implemented by the standard functions.  
+Because there is only int types and no struct or pointer types, the flat memory can be used to replace this, using int as index into a huge big linear array.  
+It's possible to build allocation libraries on top of this memory, and implement many complex data structures and algorithms.
+
 # Compilation
 
 ## Parser
