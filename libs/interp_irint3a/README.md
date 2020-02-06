@@ -7,11 +7,13 @@ The program output is stored into a bytes array.
 
 # Standard functions
 
-There a few extern functions that are implemented by the interperter to be able to run programs:
-
-- putc(byte_val) (257): write a byte to the standard output
-
-- exit(ret_code) (258): exit the program with the specified return code
+The followings functions are implemented with respect to LExpr reference:
+- putc
+- getc (TODO)
+- exit
+- fmemget (TODO)
+- fmemset (TODO)
+- fmemcpy (TODO)
 
 
 # Execution flow
