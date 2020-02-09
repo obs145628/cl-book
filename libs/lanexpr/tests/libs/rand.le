@@ -1,0 +1,27 @@
+let
+
+
+
+  fun rng_new(seed: int) : int =
+  let
+    var rng : int = fm_alloc(1)
+  in
+  (
+    fmemset(rng, seed);
+    rng
+  )
+
+  fun rng_free(rng: int) : void = fm_free(rng)
+
+  fun rng_next(rng: int) : int =
+  let
+    var next : int = fmemget(rng)
+  in
+  (
+    next = next * 1103515245 + 12345;
+    fmemset(rng, next);
+    (next / 65536) % 32768
+  )
+
+
+in ()

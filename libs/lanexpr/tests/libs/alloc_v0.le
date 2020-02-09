@@ -1,0 +1,16 @@
+let
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+
+in ()

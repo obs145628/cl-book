@@ -1,0 +1,136 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+
+  fun stack_new(cap: int) : int =
+    let
+      var stack: int = 0
+    in
+    (
+      panic_ifn(cap > 0);
+      stack = fm_alloc(cap + 2);
+      fmemset(stack, cap);
+      fmemset(stack + 1, 0);
+      stack
+    )
+
+  fun stack_free(s: int) : void = fm_free(s)
+
+  fun stack_push(stack: int, val: int) : void =
+    let
+      var cap : int = fmemget(stack)
+      var len : int = fmemget(stack + 1)
+    in
+    (
+      panic_ifn(len < cap);
+      fmemset(stack + 1, len + 1);
+      fmemset(stack + 2 + len, val)
+    )
+
+  fun stack_pop(stack: int) : int =
+  let
+    var len : int = fmemget(stack + 1)
+  in
+  (
+    panic_ifn(len > 0);
+    fmemset(stack + 1, len - 1);
+    fmemget(stack + 1 + len)
+  )
+
+  fun stack_size(s : int) : int = fmemget(s + 1)
+
+
+
+  fun test1() : void =
+  let
+    var s : int = stack_new(16)
+  in
+  (
+    printnl_int(stack_size(s));
+    stack_push(s, 16);
+    stack_push(s, 14);
+    stack_push(s, 8);
+    stack_push(s, 7);
+    printnl_int(stack_size(s));
+
+    while (stack_size(s)) do (
+      printnl_int(stack_pop(s))
+    );
+    stack_free(s)
+  )
+
+  fun test2() : void =
+  let
+    var s : int = stack_new(1000)
+    var i : int = 0
+  in
+  (
+    while (i < 1000) do (
+      stack_push(s, 2 * i * i - 12 * i + 6);
+      i = i + 1
+    );
+
+    while (stack_size(s)) do (
+      printnl_int(stack_pop(s))
+    );
+    stack_free(s)
+  )
+
+in
+(
+  test1();
+  test2()
+)

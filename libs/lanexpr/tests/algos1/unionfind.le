@@ -1,0 +1,195 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+
+
+  fun id_addr(uf: int, idx: int) : int = uf + 1 + 2 * idx
+  fun size_addr(uf: int, idx: int) : int = uf + 1 + 2 * idx + 1
+
+
+  fun uf_new(n: int) : int =
+  let
+    var uf : int = fm_alloc(1 + 2 * n)
+    var i : int = 0
+  in
+  (
+    fmemset(uf, n);
+    while (i < n) do (
+      fmemset(id_addr(uf, i), i);
+      fmemset(size_addr(uf, i), 1);
+      i = i + 1
+    );
+
+    uf
+  )
+
+  fun uf_free(uf: int) : void = fm_free(uf)
+
+  fun uf_union(uf : int, p : int, q : int) : void =
+  let
+    var pr : int = uf_find(uf, p)
+    var qr : int = uf_find(uf, q)
+  in if ((pr == qr) == 0) then
+    let
+      var pr_size : int = fmemget(size_addr(uf, pr))
+      var qr_size : int = fmemget(size_addr(uf, qr))
+    in
+    (
+      fmemset(uf, fmemget(uf) - 1);
+
+      if (pr_size < qr_size) then (
+        fmemset(id_addr(uf, pr), qr);
+        fmemset(size_addr(uf, qr), qr_size + pr_size)
+      ) else (
+        fmemset(id_addr(uf, qr), pr);
+        fmemset(size_addr(uf, pr), pr_size + qr_size)
+      )
+    )
+
+  fun uf_find(uf: int, p: int) : int =
+  (
+    while ((p == fmemget(id_addr(uf, p))) == 0) do (
+      p = fmemget(id_addr(uf, p))
+    )
+    p
+  )
+
+  fun uf_connected(uf: int, p : int, q : int) : int =
+    uf_find(uf, p) == uf_find(uf, q)
+
+  fun uf_count(uf: int) : int = fmemget(uf)
+
+  fun test1() : void =
+  let
+    var g : int = uf_new(3)
+  in
+  (
+    printnl_int(uf_find(g, 0));
+    printnl_int(uf_find(g, 1));
+    printnl_int(uf_find(g, 2));
+    printnl_int(uf_connected(g, 0, 1));
+    printnl_int(uf_connected(g, 0, 2));
+    printnl_int(uf_connected(g, 1, 2));
+    printnl_int(uf_count(g));
+    uf_free(g)
+  )
+
+  fun test2() : void =
+  let
+    var g : int = uf_new(3)
+  in
+  (
+    uf_union(g, 0, 1);
+    printnl_int(uf_find(g, 0));
+    printnl_int(uf_find(g, 1));
+    printnl_int(uf_find(g, 2));
+    printnl_int(uf_connected(g, 0, 1));
+    printnl_int(uf_connected(g, 0, 2));
+    printnl_int(uf_connected(g, 1, 2));
+    printnl_int(uf_count(g));
+    uf_free(g)
+  )
+
+  fun test3() : void =
+  let
+    var g : int = uf_new(3)
+  in
+  (
+    uf_union(g, 0, 1);
+    uf_union(g, 1, 2);
+    printnl_int(uf_find(g, 0));
+    printnl_int(uf_find(g, 1));
+    printnl_int(uf_find(g, 2));
+    printnl_int(uf_connected(g, 0, 1));
+    printnl_int(uf_connected(g, 0, 2));
+    printnl_int(uf_connected(g, 1, 2));
+    printnl_int(uf_count(g));
+    uf_free(g)
+  )
+
+  fun test4() : void =
+  let
+    var g : int = uf_new(12)
+    var i : int = 0
+  in
+  (
+    uf_union(g, 0, 2);
+    uf_union(g, 10, 5);
+    uf_union(g, 4, 2);
+    uf_union(g, 8, 9);
+    uf_union(g, 0, 7);
+    uf_union(g, 1, 7);
+    uf_union(g, 3, 11);
+    uf_union(g, 5, 8);
+    uf_union(g, 4, 7);
+
+    i = 0;
+    while (i < 12) do (
+      printnl_int(uf_find(g, i));
+      i = i + 1
+    );
+    printnl_int(uf_count(g));
+    uf_free(g)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3();
+  test4()
+)

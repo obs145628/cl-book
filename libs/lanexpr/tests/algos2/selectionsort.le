@@ -1,0 +1,238 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+  fun rng_new(seed: int) : int =
+  let
+    var rng : int = fm_alloc(1)
+  in
+  (
+    fmemset(rng, seed);
+    rng
+  )
+
+  fun rng_free(rng: int) : void = fm_free(rng)
+
+  fun rng_next(rng: int) : int =
+  let
+    var next : int = fmemget(rng)
+  in
+  (
+    next = next * 1103515245 + 12345;
+    fmemset(rng, next);
+    (next / 65536) % 32768
+  )
+
+
+
+
+
+
+
+
+  fun cmp(arr: int, i: int, j: int) : int =
+    fmemget(arr + i) - fmemget(arr + j)
+
+  fun swap(arr : int, i : int, j : int) : void =
+  let
+    var vi : int = fmemget(arr + i)
+  in
+  (
+    fmemset(arr + i, fmemget(arr + j));
+    fmemset(arr + j, vi)
+  )
+
+  fun sort(arr: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  while (i < len) do
+    let
+      var min : int = i
+      var j : int = i + 1
+    in
+    (
+      while (j < len) do (
+        if (cmp(arr, j, min) < 0) then (
+          min = j
+        );
+        j = j + 1
+      );
+
+      swap(arr, min, i);
+      i = i + 1
+    )
+
+
+
+
+
+
+  fun print_arr(arr: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  (
+    putc(91);
+
+    while (i < len)  do (
+      print_int(fmemget(arr + i));
+      if (i + 1 < len) then (
+        putc(44);
+        putc(32)
+      );
+      i = i + 1
+    );
+
+    putc(93);
+    putc(10)
+  )
+
+  fun test1() : void =
+  let
+    var arr : int = fm_alloc(7)
+  in
+  (
+    fmemset(arr + 0, 12);
+    fmemset(arr + 1, 8);
+    fmemset(arr + 2, -6);
+    fmemset(arr + 3, 25);
+    fmemset(arr + 4, 18);
+    fmemset(arr + 5, 12);
+    fmemset(arr + 6, -2);
+    sort(arr, 7);
+    print_arr(arr, 7);
+    fm_free(arr)
+  )
+
+  fun test2() : void =
+  let
+    var len : int = 100
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, -2 * i * i + 5 * i - 8);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test3() : void =
+  let
+    var len : int = 207
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, 1000 + 12 * i);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test4() : void =
+  let
+    var len : int = 178
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, 1000 - 12 * i);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test5() : void =
+  let
+    var len : int = 675
+    var arr : int = fm_alloc(len)
+    var rng : int = rng_new(78)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, rng_next(rng));
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    rng_free(rng);
+    fm_free(arr)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3();
+  test4();
+  test5()
+)
