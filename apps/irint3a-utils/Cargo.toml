@@ -11,3 +11,4 @@ clap = "2.33.0"
 interp_irint3a = { path = "../../libs/interp_irint3a/" }
 irint3a = { path = "../../libs/irint3a/" }
 lanexpr = { path = "../../libs/lanexpr/" }
+obtests = { path = "../../libs/obtests/" }

@@ -258,8 +258,9 @@ impl Parser {
         }
 
         // 2) Sort all registers by names
+
         let mut all_regs: Vec<_> = all_regs.iter().collect();
-        all_regs.sort();
+        all_regs.sort_by(|a, b| cmp_reg_keys(a, b));
 
         // 3) Add registers
         let fun_names = self.names.get_function_mut(fun.id).unwrap();
@@ -267,6 +268,27 @@ impl Parser {
             let reg_id = ir::RegId(reg_id);
             fun_names.add_register(reg_id, reg_name.to_string());
         }
+    }
+}
+
+fn reg_key_to_id(s: &str) -> Option<usize> {
+    match s.chars().nth(0) {
+        Some(c) if c == 'r' => s[1..].parse().ok(),
+        _ => None,
+    }
+}
+
+fn cmp_reg_keys(a: &str, b: &str) -> std::cmp::Ordering {
+    let a_id = reg_key_to_id(a);
+    let b_id = reg_key_to_id(b);
+    if a_id.is_some() && a_id.is_some() {
+        a_id.unwrap().cmp(&b_id.unwrap())
+    } else if a_id.is_some() {
+        std::cmp::Ordering::Less
+    } else if b_id.is_some() {
+        std::cmp::Ordering::Greater
+    } else {
+        a.cmp(b)
     }
 }
 
