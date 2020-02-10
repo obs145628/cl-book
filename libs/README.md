@@ -35,6 +35,10 @@ Basic implementation of a compiler lexer from file or string.
 
 Basic implementation and tools for a compiler parser, using oblexer.
 
+# obtests
+
+Utils to create test suites
+
 # obuid
 
 Minimal library to generate unique identifiers.
