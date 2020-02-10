@@ -400,3 +400,13 @@ fn llvm_binary_algos2_shellsort() {
 fn llvm_binary_algos2_tdmergesort() {
     test_file("../../libs/lanexpr/tests/algos2", "tdmergesort");
 }
+
+#[test]
+fn llvm_binary_algos3_bsttable() {
+    test_file("../../libs/lanexpr/tests/algos3", "bsttable");
+}
+
+#[test]
+fn llvm_binary_algos3_lltable() {
+    test_file("../../libs/lanexpr/tests/algos3", "lltable");
+}
