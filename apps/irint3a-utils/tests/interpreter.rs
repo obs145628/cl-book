@@ -92,7 +92,6 @@ fn interp_irint3a_algos1_unionfind() {
     test_file("../../libs/lanexpr/tests/algos1", "unionfind");
 }
 
-/*
 #[test]
 fn interp_irint3a_algos2_3wquicksort() {
     test_file("../../libs/lanexpr/tests/algos2", "3wquicksort");
@@ -102,7 +101,6 @@ fn interp_irint3a_algos2_3wquicksort() {
 fn interp_irint3a_algos2_bumergesort() {
     test_file("../../libs/lanexpr/tests/algos2", "bumergesort");
 }
-
 
 #[test]
 fn interp_irint3a_algos2_heap() {
@@ -138,7 +136,6 @@ fn interp_irint3a_algos2_shellsort() {
 fn interp_irint3a_algos2_tdmergesort() {
     test_file("../../libs/lanexpr/tests/algos2", "tdmergesort");
 }
-*/
 
 #[test]
 fn interp_irint3a_algos3_bsttable() {

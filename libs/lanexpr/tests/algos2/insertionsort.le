@@ -155,7 +155,7 @@ let
 
   fun test2() : void =
   let
-    var len : int = 100
+    var len : int = 50
     var arr : int = fm_alloc(len)
     var i : int = 0
   in
@@ -172,7 +172,7 @@ let
 
   fun test3() : void =
   let
-    var len : int = 207
+    var len : int = 107
     var arr : int = fm_alloc(len)
     var i : int = 0
   in
@@ -189,7 +189,7 @@ let
 
   fun test4() : void =
   let
-    var len : int = 178
+    var len : int = 78
     var arr : int = fm_alloc(len)
     var i : int = 0
   in
@@ -206,7 +206,7 @@ let
 
   fun test5() : void =
   let
-    var len : int = 675
+    var len : int = 113
     var arr : int = fm_alloc(len)
     var rng : int = rng_new(78)
     var i : int = 0

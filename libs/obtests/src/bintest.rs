@@ -127,8 +127,7 @@ impl RefBuilder {
 }
 
 pub trait UserRunner {
-    fn run(&self, path: &str, input_name: Option<String>,
-	   input_path: Option<String>) -> Vec<u8>;
+    fn run(&self, path: &str, input_name: Option<String>, input_path: Option<String>) -> Vec<u8>;
 }
 
 pub struct TestRunner {
@@ -179,7 +178,7 @@ impl TestRunner {
         let ref_out = rb.get_ref();
 
         let src_path = self.src_path();
-	let input_path = self.input_path(input_name.clone());
+        let input_path = self.input_path(input_name.clone());
         let code_out = ur.run(&src_path, input_name, input_path);
         self.check_output(&code_out, &ref_out);
     }

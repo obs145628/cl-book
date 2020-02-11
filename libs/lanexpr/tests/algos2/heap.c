@@ -154,7 +154,7 @@ void test1() {
 }
 
 void test2() {
-  int_t len = 100;
+  int_t len = 50;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -169,7 +169,7 @@ void test2() {
 }
 
 void test3() {
-  int_t len = 207;
+  int_t len = 107;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -184,7 +184,7 @@ void test3() {
 }
 
 void test4() {
-  int_t len = 178;
+  int_t len = 78;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -199,7 +199,7 @@ void test4() {
 }
 
 void test5() {
-  int_t len = 675;
+  int_t len = 113;
   int_t arr = fm_alloc(len);
   int_t rng = rng_new(78);
 

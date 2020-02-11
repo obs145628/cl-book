@@ -69,7 +69,7 @@ void test1() {
 }
 
 void test2() {
-  int_t len = 100;
+  int_t len = 50;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -84,7 +84,7 @@ void test2() {
 }
 
 void test3() {
-  int_t len = 207;
+  int_t len = 107;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -99,7 +99,7 @@ void test3() {
 }
 
 void test4() {
-  int_t len = 178;
+  int_t len = 78;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -114,7 +114,7 @@ void test4() {
 }
 
 void test5() {
-  int_t len = 675;
+  int_t len = 113;
   int_t arr = fm_alloc(len);
   int_t rng = rng_new(78);
 
@@ -147,43 +147,43 @@ void test6() {
 }
 
 void test7() {
-  int_t arr = fm_alloc(250);
+  int_t arr = fm_alloc(100);
 
   int_t i = 0;
-  while (i < 25) {
+  while (i < 20) {
     int_t j = 0;
-    while (j < 10) {
+    while (j < 5) {
       std_fmemset(arr + 10 * i + j, 200 + 12 * i);
       j = j + 1;
     }
     i = i + 1;
   }
 
-  sort(arr, 250);
-  print_arr(arr, 250);
+  sort(arr, 100);
+  print_arr(arr, 100);
   fm_free(arr);
 }
 
 void test8() {
-  int_t arr = fm_alloc(250);
+  int_t arr = fm_alloc(100);
 
   int_t i = 0;
-  while (i < 25) {
+  while (i < 20) {
     int_t j = 0;
-    while (j < 10) {
+    while (j < 5) {
       std_fmemset(arr + 10 * i + j, 200 - 12 * i);
       j = j + 1;
     }
     i = i + 1;
   }
 
-  sort(arr, 250);
-  print_arr(arr, 250);
+  sort(arr, 100);
+  print_arr(arr, 100);
   fm_free(arr);
 }
 
 void test9() {
-  int_t len = 113;
+  int_t len = 99;
   int_t arr = fm_alloc(len);
 
   int_t i = 0;
@@ -198,7 +198,7 @@ void test9() {
 }
 
 void test10() {
-  int_t len = 327;
+  int_t len = 77;
   int_t arr = fm_alloc(len);
   int_t rng = rng_new(54);
 
