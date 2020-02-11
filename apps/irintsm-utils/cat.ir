@@ -1,0 +1,65 @@
+.declare 257
+
+.declare 258
+
+.declare 259
+
+.declare 260
+
+.declare 261
+
+.declare 262
+
+.define 6
+0:
+  const 0
+  store 0
+  jump %1
+
+1:
+  load 0
+  const 0
+  const 1
+  sub
+  cmpeq
+  const 0
+  cmpeq
+  br %2, %3
+
+2:
+  call %259, 0
+  store 0
+  load 0
+  const 0
+  const 1
+  sub
+  cmpeq
+  const 0
+  cmpeq
+  br %4, %5
+
+3:
+  const 0
+  ret
+
+4:
+  load 0
+  call %257, 1
+  pop
+  jump %6
+
+5:
+  jump %6
+
+6:
+  jump %1
+
+
+.define 0
+0:
+  call %6, 0
+  const 0
+  call %258, 1
+  ret
+
+

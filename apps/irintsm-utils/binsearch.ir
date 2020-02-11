@@ -1,0 +1,433 @@
+.declare 257
+
+.declare 258
+
+.declare 259
+
+.declare 260
+
+.declare 261
+
+.declare 262
+
+.define 6
+0:
+  call %12, 0
+  pop
+  call %13, 0
+  pop
+  call %14, 0
+  pop
+  call %15, 0
+  pop
+  const 0
+  ret
+
+
+.define 7
+0:
+  load 0
+  const 0
+  cmpeq
+  const 0
+  cmpeq
+  br %1, %2
+
+1:
+  load 0
+  const 10
+  div
+  call %7, 1
+  pop
+  const 48
+  load 0
+  const 10
+  rem
+  add
+  call %257, 1
+  pop
+  jump %3
+
+2:
+  jump %3
+
+3:
+  const 0
+  ret
+
+
+.define 8
+0:
+  load 0
+  const 0
+  cmplt
+  br %1, %2
+
+1:
+  const 45
+  call %257, 1
+  pop
+  const 0
+  load 0
+  sub
+  call %7, 1
+  pop
+  jump %3
+
+2:
+  load 0
+  const 0
+  cmpeq
+  br %4, %5
+
+3:
+  const 0
+  ret
+
+4:
+  const 48
+  call %257, 1
+  pop
+  jump %6
+
+5:
+  load 0
+  call %7, 1
+  pop
+  jump %6
+
+6:
+  jump %3
+
+
+.define 9
+0:
+  const 10
+  call %257, 1
+  pop
+  const 0
+  ret
+
+
+.define 10
+0:
+  load 0
+  call %8, 1
+  pop
+  call %9, 0
+  pop
+  const 0
+  ret
+
+
+.define 11
+0:
+  const 0
+  store 3
+  load 1
+  const 1
+  sub
+  store 4
+  const 0
+  const 1
+  sub
+  store 5
+  jump %1
+
+1:
+  load 3
+  load 4
+  const 1
+  add
+  cmplt
+  br %2, %3
+
+2:
+  load 3
+  load 4
+  load 3
+  sub
+  const 2
+  div
+  add
+  store 6
+  load 0
+  load 6
+  add
+  call %260, 1
+  store 7
+  load 2
+  load 7
+  cmplt
+  br %4, %5
+
+3:
+  load 5
+  ret
+
+4:
+  load 6
+  const 1
+  sub
+  store 4
+  jump %6
+
+5:
+  load 2
+  load 7
+  cmpgt
+  br %7, %8
+
+6:
+  jump %1
+
+7:
+  load 6
+  const 1
+  add
+  store 3
+  jump %9
+
+8:
+  load 4
+  const 1
+  add
+  store 3
+  load 6
+  store 5
+  jump %9
+
+9:
+  jump %6
+
+
+.define 12
+0:
+  const 160
+  const 0
+  const 56
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  ret
+
+
+.define 13
+0:
+  const 0
+  store 0
+  jump %1
+
+1:
+  load 0
+  const 10
+  cmplt
+  br %2, %3
+
+2:
+  const 160
+  load 0
+  add
+  load 0
+  call %261, 2
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %1
+
+3:
+  const 160
+  const 10
+  const 0
+  const 50
+  sub
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  store 0
+  jump %4
+
+4:
+  load 0
+  const 10
+  cmplt
+  br %5, %6
+
+5:
+  const 160
+  const 10
+  load 0
+  call %11, 3
+  call %10, 1
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %4
+
+6:
+  const 160
+  const 10
+  const 63
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  ret
+
+
+.define 14
+0:
+  const 0
+  store 0
+  jump %1
+
+1:
+  load 0
+  const 10
+  cmplt
+  br %2, %3
+
+2:
+  const 160
+  load 0
+  add
+  load 0
+  const 5
+  sub
+  call %261, 2
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %1
+
+3:
+  const 160
+  const 10
+  const 0
+  const 50
+  sub
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  const 10
+  sub
+  store 0
+  jump %4
+
+4:
+  load 0
+  const 10
+  cmplt
+  br %5, %6
+
+5:
+  const 160
+  const 10
+  load 0
+  call %11, 3
+  call %10, 1
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %4
+
+6:
+  const 160
+  const 10
+  const 63
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  ret
+
+
+.define 15
+0:
+  const 0
+  store 0
+  jump %1
+
+1:
+  load 0
+  const 10
+  cmplt
+  br %2, %3
+
+2:
+  const 160
+  load 0
+  add
+  const 2
+  load 0
+  mul
+  call %261, 2
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %1
+
+3:
+  const 160
+  const 10
+  const 0
+  const 50
+  sub
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  store 0
+  jump %4
+
+4:
+  load 0
+  const 20
+  cmplt
+  br %5, %6
+
+5:
+  const 160
+  const 10
+  load 0
+  call %11, 3
+  call %10, 1
+  pop
+  load 0
+  const 1
+  add
+  store 0
+  jump %4
+
+6:
+  const 160
+  const 10
+  const 63
+  call %11, 3
+  call %10, 1
+  pop
+  const 0
+  ret
+
+
+.define 0
+0:
+  call %6, 0
+  const 0
+  call %258, 1
+  ret
+
+

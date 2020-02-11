@@ -98,6 +98,7 @@ dependencies = [
  "interp_irintsm 0.1.0",
  "irintsm 0.1.0",
  "lanexpr 0.1.0",
+ "obtests 0.1.0",
 ]
 
 [[package]]
@@ -151,6 +152,10 @@ version = "0.1.0"
 dependencies = [
  "oblexer 0.1.0",
 ]
+
+[[package]]
+name = "obtests"
+version = "0.1.0"
 
 [[package]]
 name = "obuid"
