@@ -148,6 +148,11 @@ fn interp_irint3a_algos3_bsttable() {
 }
 
 #[test]
+fn llvm_binary_algos3_hashtable() {
+    test_file("../../libs/lanexpr/tests/algos3", "hashtable");
+}
+
+#[test]
 fn interp_irint3a_algos3_lltable() {
     test_file("../../libs/lanexpr/tests/algos3", "lltable");
 }

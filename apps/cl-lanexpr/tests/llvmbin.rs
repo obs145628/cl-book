@@ -146,6 +146,11 @@ fn llvm_binary_algos3_bsttable() {
 }
 
 #[test]
+fn llvm_binary_algos3_hashtable() {
+    test_file("../../libs/lanexpr/tests/algos3", "hashtable");
+}
+
+#[test]
 fn llvm_binary_algos3_lltable() {
     test_file("../../libs/lanexpr/tests/algos3", "lltable");
 }
