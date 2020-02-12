@@ -1,14 +1,12 @@
+use lanexpr::parser;
+use lanexpr::translater;
+use lanexpr::typecheck;
 use obtests::bintest::{TestRunner, UserRunner};
 use obtests::utils;
-use lanexpr::parser;
-use lanexpr::typecheck;
-use lanexpr::translater;
-
 
 struct LLVMRunner {}
 impl UserRunner for LLVMRunner {
-    fn run(&self, path: &str, _input_name: Option<String>,
-    input_path: Option<String>) -> Vec<u8> {
+    fn run(&self, path: &str, _input_name: Option<String>, input_path: Option<String>) -> Vec<u8> {
         let input_path: Option<&str> = match input_path.as_ref() {
             Some(x) => Some(x),
             None => None,
@@ -30,8 +28,6 @@ impl UserRunner for LLVMRunner {
         res
     }
 }
-
-
 
 fn test_file(dir: &str, test_name: &str) {
     let ur = LLVMRunner {};
@@ -62,6 +58,11 @@ fn llvm_binary_basics_cat() {
 #[test]
 fn llvm_binary_basics_calc() {
     test_file("../../libs/lanexpr/tests/basics", "calc");
+}
+
+#[test]
+fn llvm_binary_basics_ivec() {
+    test_file("../../libs/lanexpr/tests/basics", "ivec");
 }
 
 #[test]

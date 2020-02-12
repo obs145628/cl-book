@@ -1,0 +1,522 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+  fun rng_new(seed: int) : int =
+  let
+    var rng : int = fm_alloc(1)
+  in
+  (
+    fmemset(rng, seed);
+    rng
+  )
+
+  fun rng_free(rng: int) : void = fm_free(rng)
+
+  fun rng_next(rng: int) : int =
+  let
+    var next : int = fmemget(rng)
+  in
+  (
+    next = next * 1103515245 + 12345;
+    fmemset(rng, next);
+    (next / 65536) % 32768
+  )
+
+
+
+
+
+
+
+
+
+  fun ivec_new(size: int) : int =
+  let
+    var v : int = fm_alloc(size + 1)
+  in
+  (
+    fmemset(v, size);
+    v
+  )
+
+  fun ivec_new_fill(size: int, init: int) : int =
+  let
+    var v : int = ivec_new(size)
+    var i : int = 0
+  in
+  (
+    while (i < size) do (
+      fmemset(v + 1 + i, init);
+      i = i + 1
+    );
+    v
+  )
+
+  fun ivec_new_rand(size: int, rng: int) : int =
+  let
+    var v : int = ivec_new(size)
+    var i : int = 0
+  in
+  (
+    while (i < size) do (
+      fmemset(v + i + 1, rng_next(rng) % 100);
+      i = i + 1
+    );
+    v
+  )
+
+  fun ivec_free(v: int) : void = fm_free(v)
+
+  fun ivec_print(v: int) : void =
+  let 
+    var len : int = fmemget(v)
+    var i : int = 0
+  in
+  (
+    putc(91);
+
+    while (i < len) do (
+      print_int(fmemget(v + 1 + i));
+      if (i + 1 < len) then (
+        putc(44);
+        putc(32)
+      );
+      i = i + 1
+    );
+
+    putc(93);
+    putc(10)
+  )
+
+  fun ivec_size(v: int) : int = fmemget(v)
+
+  fun ivec_iget(v: int, pos: int) : int =
+  let
+    var len : int = fmemget(v)
+  in
+  (
+    panic_ifn(pos < len);
+    fmemget(v + 1 + pos)
+  )
+
+  fun ivec_iset(v: int, pos: int, val: int) : void =
+  let
+    var len : int = fmemget(v)
+  in
+  (
+    panic_ifn(pos < len);
+    fmemset(v + 1 + pos, val)
+  )
+
+  fun iadd_vv(u: int, v: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    panic_ifn(len == ivec_size(v));
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) + ivec_iget(v, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun isub_vv(u: int, v: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    panic_ifn(len == ivec_size(v));
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) - ivec_iget(v, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun imul_vv(u: int, v: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    panic_ifn(len == ivec_size(v));
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) * ivec_iget(v, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun idiv_vv(u: int, v: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    panic_ifn(len == ivec_size(v));
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) / ivec_iget(v, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun iadd_vs(u: int, x: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) + x);
+      i = i + 1
+    );
+    res
+  )
+
+  fun isub_vs(u: int, x: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) - x);
+      i = i + 1
+    );
+    res
+  )
+
+  fun imul_vs(u: int, x: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) * x);
+      i = i + 1
+    );
+    res
+  )
+
+  fun idiv_vs(u: int, x: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, ivec_iget(u, i) / x);
+      i = i + 1
+    );
+    res
+  )
+
+  fun isub_sv(x: int, u: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, x - ivec_iget(u, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun idiv_sv(x: int, u: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, x / ivec_iget(u, i));
+      i = i + 1
+    );
+    res
+  )
+
+  fun ineg_v(u: int) : int = isub_sv(0, u)
+
+  fun isqrt_s(n : int) : int =
+  let
+    var x : int = n
+    var y : int = 1
+  in
+  (
+    while (x > y) do (
+      x = (x + y) / 2;
+      y = n / x
+    );
+    x
+  )
+
+  fun isqrt_v(u: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = ivec_new(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      ivec_iset(res, i, isqrt_s(ivec_iget(u, i)));
+      i = i + 1
+    );
+    res
+  )
+
+  fun idot_vv(u: int, v: int) : int =
+  let
+    var len : int = ivec_size(u)
+    var res : int = 0
+    var i : int = 0
+  in
+  (
+    panic_ifn(len == ivec_size(v));
+    while (i < len) do (
+      res = res + ivec_iget(u, i) * ivec_iget(v, i);
+      i = i + 1
+    );
+    res
+  )
+
+  fun idistsq_vv(u : int, v : int) : int =
+  let
+    var sub : int = isub_vv(u, v)
+    var res: int = idot_vv(sub, sub)
+  in
+  (
+    ivec_free(sub);
+    res
+  )
+
+  fun idist_vv(u: int, v: int) : int = isqrt_s(idistsq_vv(u, v))
+
+  fun test1() : void =
+  let
+    var v : int = ivec_new_fill(6, 12)
+    var i : int = 0
+  in
+  (
+    ivec_print(v);
+    printnl_int(ivec_iget(v, 3));
+
+    i = 1;
+    while (i < ivec_size(v)) do (
+      ivec_iset(v, i, 4*i*i - 10);
+      i = i + 1
+    );
+
+    i = i / (i + 1);
+    while (i < ivec_size(v)) do (
+      printnl_int(ivec_iget(v, i));
+      i = i + 1
+    );
+
+    ivec_print(v);
+    ivec_free(v)
+  )
+
+  fun test2() : void =
+  let
+    var rng: int  = rng_new(47)
+    var v1 : int = ivec_new_rand(8, rng)
+    var v2 : int = ivec_new_rand(5, rng)
+  in
+  (
+    ivec_print(v1);
+    ivec_print(v2);
+    ivec_free(v1);
+    ivec_free(v2);
+    rng_free(rng)
+  )
+
+  fun test3() : void =
+  let
+    var rng : int = rng_new(47)
+    var v1 : int = ivec_new_rand(8, rng)
+    var v2 : int = ivec_new_rand(8, rng)
+    var v3: int = 0
+    var v4: int = 0
+    var v5: int = 0
+    var v6: int = 0
+    var v7: int = 0
+  in
+  (
+    ivec_print(v1);
+    ivec_print(v2);
+
+    v3 = iadd_vv(v1, v2);
+    ivec_print(v3);
+
+    v4 = isub_vv(v1, v2);
+    ivec_print(v4);
+
+    v5 = imul_vv(v1, v2);
+    ivec_print(v5);
+
+    v6 = idiv_vv(v1, v2);
+    ivec_print(v6);
+
+    v7 = ineg_v(v3);
+    ivec_print(v7);
+
+    ivec_free(v1);
+    ivec_free(v2);
+    ivec_free(v3);
+    ivec_free(v4);
+    ivec_free(v5);
+    ivec_free(v6);
+    ivec_free(v7);
+    rng_free(rng)
+  )
+
+  fun test4() : void =
+  let
+    var rng : int = rng_new(3465)
+    var v1 : int = ivec_new_rand(8, rng)
+    var v2 : int = 0
+    var v3 : int = 0
+    var v4 : int = 0
+    var v5 : int = 0
+    var v6 : int = 0
+    var v7 : int = 0
+  in
+  (
+    ivec_print(v1);
+
+    v2 = iadd_vs(v1, 12);
+    ivec_print(v2);
+
+    v3 = isub_vs(v1, 7);
+    ivec_print(v3);
+
+    v4 = imul_vs(v1, 3);
+    ivec_print(v4);
+
+    v5 = idiv_vs(v1, 2);
+    ivec_print(v5);
+
+    v6 = isub_sv(100, v1);
+    ivec_print(v6);
+
+    v7 = idiv_sv(1001, v1);
+    ivec_print(v7);
+
+    ivec_free(v1);
+    ivec_free(v2);
+    ivec_free(v3);
+    ivec_free(v4);
+    ivec_free(v5);
+    ivec_free(v6);
+    ivec_free(v7);
+    rng_free(rng)
+  )
+
+  fun test5() : void =
+  let
+    var rng : int = rng_new(712)
+    var v1 : int = ivec_new_rand(8, rng)
+    var v2 : int = imul_vv(v1, v1)
+    var v3 : int = 0
+    var v4 : int = 0
+  in
+  (
+    ivec_print(v1);
+    ivec_print(v2);
+
+    v3 = isqrt_v(v2);
+    ivec_print(v3);
+
+    v4 = ivec_new_rand(8, rng);
+    ivec_print(v4);
+  
+    printnl_int(idot_vv(v1, v4));
+    printnl_int(idist_vv(v1, v4));
+    printnl_int(idistsq_vv(v1, v1));
+
+    ivec_free(v1);
+    ivec_free(v2);
+    ivec_free(v3);
+    ivec_free(v4);
+    rng_free(rng)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3();
+  test4();
+  test5()
+)

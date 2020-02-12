@@ -63,6 +63,11 @@ fn interp_irint3a_basics_calc() {
 }
 
 #[test]
+fn llvm_binary_basics_ivec() {
+    test_file("../../libs/lanexpr/tests/basics", "ivec");
+}
+
+#[test]
 fn interp_irint3a_algos1_binsearch() {
     test_file("../../libs/lanexpr/tests/algos1", "binsearch");
 }
