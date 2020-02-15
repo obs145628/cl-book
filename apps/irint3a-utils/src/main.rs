@@ -1,6 +1,7 @@
 extern crate clap;
 
 use clap::{App, Arg};
+use std::collections::HashMap;
 use std::io::Read;
 use std::io::Write;
 
@@ -28,6 +29,14 @@ fn main() {
                 .help("Set the input file")
                 .required(true),
         )
+        .arg(
+            Arg::with_name("OUTPUT")
+                .short("o")
+                .long("output")
+                .value_name("FILE")
+                .help("Set the program output file")
+                .takes_value(true),
+        )
         .arg(Arg::with_name("dump").long("dump").help("Dump the IR"))
         .arg(
             Arg::with_name("run")
@@ -41,9 +50,17 @@ fn main() {
                 .help("Set the stdin file for the interpreter environment")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("dump-cfg")
+                .long("dump-cfg")
+                .value_name("FUNCTION")
+                .help("Create a dot output file for the CFG of the corresponding function")
+                .takes_value(true),
+        )
         .get_matches();
 
     let in_path = matches.value_of("INPUT").unwrap();
+    let out_path = matches.value_of("OUTPUT");
     let ps = Parser::from_file(&in_path);
     let (code, names) = ps.build();
 
@@ -61,5 +78,29 @@ fn main() {
         let ret_code = rt.run();
         std::io::stdout().write_all(rt.stdout()).unwrap();
         std::process::exit(ret_code.get_val());
+    }
+
+    if let Some(cfg_fname) = matches.value_of("dump-cfg") {
+        let out_path = out_path.unwrap_or("cfg.dot");
+        let fun_id = names
+            .get_function_id(&cfg_fname)
+            .expect("dump-cfg: function not found");
+        let fun = code.get_fun(fun_id).unwrap();
+        let fun_names = names.get_function(fun_id).unwrap();
+
+        let cfg = irint3a::controlflow::build_cfg(fun);
+
+        let fun_names: HashMap<usize, String> = fun
+            .basic_blocks_list()
+            .iter()
+            .map(|bb_id| {
+                (
+                    bb_id.0,
+                    fun_names.get_basic_block_name(*bb_id).unwrap().to_string(),
+                )
+            })
+            .collect();
+
+        cfg.write_dot(out_path, Some("cfg"), Some(&fun_names));
     }
 }

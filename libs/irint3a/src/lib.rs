@@ -6,6 +6,9 @@ pub mod irprinter;
 pub mod irvalidation;
 pub mod registers;
 
+pub mod controlflow;
+pub mod digraph;
+
 #[cfg(test)]
 mod tests {
 
