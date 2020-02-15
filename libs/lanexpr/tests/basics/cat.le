@@ -1,0 +1,9 @@
+let
+  var val : int = 0
+in
+  while (!(val == -1)) do (
+    val = getc();
+    if (!(val == -1)) then (
+      putc(val)
+    )
+  )

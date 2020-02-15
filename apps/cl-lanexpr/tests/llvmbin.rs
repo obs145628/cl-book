@@ -1,109 +1,156 @@
-use std::collections::hash_map::DefaultHasher;
-use std::fs::File;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::io::Read;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-
 use lanexpr::parser;
 use lanexpr::translater;
 use lanexpr::typecheck;
+use obtests::bintest::{TestRunner, UserRunner};
+use obtests::utils;
 
-fn calculate_hash(t: &str) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
+struct LLVMRunner {}
+impl UserRunner for LLVMRunner {
+    fn run(&self, path: &str, _input_name: Option<String>, input_path: Option<String>) -> Vec<u8> {
+        let input_path: Option<&str> = match input_path.as_ref() {
+            Some(x) => Some(x),
+            None => None,
+        };
+        let mut ps = parser::Parser::new_from_file(path);
+        let ast = ps.parse();
 
-fn get_bin_output(path: &str) -> Vec<u8> {
-    let bin_out = Command::new(path)
-        .output()
-        .expect("Failed to run standalone binary");
-    bin_out.stdout
-}
+        let mut tc = typecheck::TypeCheck::new();
+        tc.check(&ast);
+        let ba = tc.get_bindings();
 
-fn build_ref_file(path: &str) -> PathBuf {
-    let ref_path = Path::new(path).with_extension("out");
-    if ref_path.exists() {
-        return ref_path;
+        let tmp_bin_path = format!(
+            "/tmp/lanexpr_llvm_bin_tmp_{}.out",
+            utils::calculate_hash(path)
+        );
+        translater::llvmbin::compile_to_binary(&ast, &ba, &tmp_bin_path);
+        let res = utils::run_cmd(&tmp_bin_path, &[] as &[&str], input_path);
+        std::fs::remove_file(&tmp_bin_path).expect("Failed to remove temporary bin file");
+        res
     }
-
-    let c_path = Path::new(path).with_extension("c");
-    let tmp_bin_path = format!("/tmp/cl_bin_tmp_{}.out", calculate_hash(path));
-
-    let _out = Command::new("gcc")
-        .args(&[c_path.to_str().unwrap(), "-o", &tmp_bin_path])
-        .output()
-        .expect(&format!(
-            "Failed to compile C file {} to build ref for {}",
-            c_path.to_str().unwrap(),
-            path,
-        ));
-
-    let c_out = Command::new(&tmp_bin_path).output().expect(&format!(
-        "Failed to run bin file compiled from C file {} to build ref for {}",
-        c_path.to_str().unwrap(),
-        path,
-    ));
-
-    std::fs::remove_file(&tmp_bin_path).expect("Failed to remove temporary bin file");
-
-    let mut ref_file = File::create(ref_path.clone()).expect("Failed to create ref file");
-    ref_file
-        .write_all(&c_out.stdout)
-        .expect("Failed to write to ref file");
-
-    ref_path
 }
 
-fn read_ref_file(path: &str) -> Vec<u8> {
-    let ref_path = build_ref_file(path);
-    let mut ref_file = File::open(ref_path).expect("Failed to open ref file");
-    let mut res = vec![];
-    ref_file
-        .read_to_end(&mut res)
-        .expect("Failed to read ref file");
-    res
-}
-
-fn get_llvm_output(path: &str) -> Vec<u8> {
-    let mut ps = parser::Parser::new_from_file(path);
-    let ast = ps.parse();
-
-    let mut tc = typecheck::TypeCheck::new();
-    tc.check(&ast);
-    let ba = tc.get_bindings();
-
-    let tmp_bin_path = format!("/tmp/lanexpr_llvm_bin_tmp_{}.out", calculate_hash(path));
-    translater::llvmbin::compile_to_binary(&ast, &ba, &tmp_bin_path);
-    let res = get_bin_output(&tmp_bin_path);
-    std::fs::remove_file(&tmp_bin_path).expect("Failed to remove temporary bin file");
-    res
-}
-
-fn test_file(path: &str) {
-    let ref_bytes = read_ref_file(path);
-    let out_bytes = get_llvm_output(path);
-
-    println!("REF:\n<BEG>{}<END>", String::from_utf8_lossy(&ref_bytes));
-    println!(" ME:\n<BEG>{}<END>", String::from_utf8_lossy(&out_bytes));
-    assert_eq!(ref_bytes, out_bytes);
+fn test_file(dir: &str, test_name: &str) {
+    let ur = LLVMRunner {};
+    let tr = TestRunner::new(dir.to_string(), test_name.to_string());
+    tr.run(&ur);
 }
 
 #[test]
 fn llvm_binary_basics_printer() {
-    test_file("../../libs/lanexpr/tests/basics/printer.le");
+    test_file("../../libs/lanexpr/tests/basics", "printer");
 }
 
 #[test]
 fn llvm_binary_basics_fibo() {
-    test_file("../../libs/lanexpr/tests/basics/fibo.le");
+    test_file("../../libs/lanexpr/tests/basics", "fibo");
 }
 
 #[test]
 fn llvm_binary_basics_fact() {
-    test_file("../../libs/lanexpr/tests/basics/fact.le");
+    test_file("../../libs/lanexpr/tests/basics", "fact");
+}
+
+#[test]
+fn llvm_binary_basics_cat() {
+    test_file("../../libs/lanexpr/tests/basics", "cat");
+}
+
+#[test]
+fn llvm_binary_basics_calc() {
+    test_file("../../libs/lanexpr/tests/basics", "calc");
+}
+
+#[test]
+fn llvm_binary_basics_ivec() {
+    test_file("../../libs/lanexpr/tests/basics", "ivec");
+}
+
+#[test]
+fn llvm_binary_algos1_binsearch() {
+    test_file("../../libs/lanexpr/tests/algos1", "binsearch");
+}
+
+#[test]
+fn llvm_binary_algos1_queuell() {
+    test_file("../../libs/lanexpr/tests/algos1", "queuell");
+}
+
+#[test]
+fn llvm_binary_algos1_stack() {
+    test_file("../../libs/lanexpr/tests/algos1", "stack");
+}
+
+#[test]
+fn llvm_binary_algos1_stackfixed() {
+    test_file("../../libs/lanexpr/tests/algos1", "stackfixed");
+}
+
+#[test]
+fn llvm_binary_algos1_stackll() {
+    test_file("../../libs/lanexpr/tests/algos1", "stackll");
+}
+
+#[test]
+fn llvm_binary_algos1_unionfind() {
+    test_file("../../libs/lanexpr/tests/algos1", "unionfind");
+}
+
+#[test]
+fn llvm_binary_algos2_3wquicksort() {
+    test_file("../../libs/lanexpr/tests/algos2", "3wquicksort");
+}
+
+#[test]
+fn llvm_binary_algos2_bumergesort() {
+    test_file("../../libs/lanexpr/tests/algos2", "bumergesort");
+}
+
+#[test]
+fn llvm_binary_algos2_heap() {
+    test_file("../../libs/lanexpr/tests/algos2", "heap");
+}
+
+#[test]
+fn llvm_binary_algos2_heapsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "heapsort");
+}
+
+#[test]
+fn llvm_binary_algos2_insertionsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "insertionsort");
+}
+
+#[test]
+fn llvm_binary_algos2_quicksort() {
+    test_file("../../libs/lanexpr/tests/algos2", "quicksort");
+}
+
+#[test]
+fn llvm_binary_algos2_selectionsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "selectionsort");
+}
+
+#[test]
+fn llvm_binary_algos2_shellsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "shellsort");
+}
+
+#[test]
+fn llvm_binary_algos2_tdmergesort() {
+    test_file("../../libs/lanexpr/tests/algos2", "tdmergesort");
+}
+
+#[test]
+fn llvm_binary_algos3_bsttable() {
+    test_file("../../libs/lanexpr/tests/algos3", "bsttable");
+}
+
+#[test]
+fn llvm_binary_algos3_hashtable() {
+    test_file("../../libs/lanexpr/tests/algos3", "hashtable");
+}
+
+#[test]
+fn llvm_binary_algos3_lltable() {
+    test_file("../../libs/lanexpr/tests/algos3", "lltable");
 }

@@ -1,0 +1,628 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+  fun rng_new(seed: int) : int =
+  let
+    var rng : int = fm_alloc(1)
+  in
+  (
+    fmemset(rng, seed);
+    rng
+  )
+
+  fun rng_free(rng: int) : void = fm_free(rng)
+
+  fun rng_next(rng: int) : int =
+  let
+    var next : int = fmemget(rng)
+  in
+  (
+    next = next * 1103515245 + 12345;
+    fmemset(rng, next);
+    (next / 65536) % 32768
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+  fun node_new(key: int, val: int, head: int) : int =
+  let
+    var res : int = fm_alloc(3)
+  in
+  (
+    fmemset(res, key);
+    fmemset(res + 1, val);
+    fmemset(res + 2, head);
+    res
+  )
+
+  fun ll_free(l: int) : void =
+    while (l) do
+    let
+      var next : int = fmemget(l + 2)
+    in
+    (
+      fm_free(l);
+      l = next
+    )
+
+
+  fun ll_find(l: int, key: int) : int =
+  let
+    var target : int = 0
+  in
+  (
+    while (l) do
+      if (fmemget(l) == key) then (
+        target = l;
+        l = 0
+      ) else (
+        l = fmemget(l + 2)
+      )
+    ;
+
+    target
+  )
+
+  fun ll_find_ptr(l_ptr : int, key : int) : int =
+  let
+    var target : int = 0
+    var l : int = fmemget(l_ptr)
+  in
+  (
+    while (l) do
+      if (fmemget(l) == key) then (
+        target = l_ptr;
+        l = 0
+      ) else (
+        l_ptr = l + 2;
+        l = fmemget(l_ptr)
+      )
+    ;
+
+    target
+  )
+
+  fun hash_fn(x : int) : int = x * 2654435761
+
+  fun hash_key(x : int, len: int) : int =
+  (
+    x = hash_fn(x);
+    (if (x > 0) then x else -x) % len
+  )
+
+  fun table_new() : int =
+  let
+    var n : int = 37
+    var st : int = fm_alloc(2 + n)
+    var i : int = 0
+  in
+  (
+    fmemset(st, n);
+    fmemset(st + 1, 0);
+
+    while (i < n) do (
+      fmemset(st + 2 + i, 0);
+      i = i + 1
+    );
+
+    st
+  )
+
+  fun table_free(st : int) : void =
+  let
+    var n : int = fmemget(st)
+    var i : int = 0
+  in
+  (
+    while (i < n) do (
+      ll_free(fmemget(st + 2 + i));
+      i = i + 1
+    );
+    fm_free(st)
+  )
+
+
+  fun table_put(st : int, key : int, val : int) : int =
+  let
+    var n : int = fmemget(st)
+    var idx : int = hash_key(key, n)
+    var head : int = fmemget(st + 2 + idx)
+    var node : int = ll_find(head, key)
+  in
+    if (node) then (
+      fmemset(node + 1, val);
+      0
+    ) else (
+      head = node_new(key, val, head);
+      fmemset(st + 2 + idx, head);
+      fmemset(st + 1, fmemget(st + 1) + 1);
+      1
+    )
+
+  fun table_delete(st : int, key : int) : int =
+  let
+    var n : int = fmemget(st)
+    var idx : int = hash_key(key, n)
+    var head_ptr : int = st + 2 + idx
+    var node_ptr : int = ll_find_ptr(head_ptr, key)
+  in
+    if (node_ptr) then
+    let
+      var node : int = fmemget(node_ptr)
+    in
+    (
+      panic_ifn(node);
+      fmemset(node_ptr, fmemget(node + 2));
+      fm_free(node);
+      fmemset(st + 1, fmemget(st + 1) - 1);
+      1
+    )
+    else 0
+
+  fun table_get(st : int, key : int) : int =
+  let
+    var n : int = fmemget(st)
+    var idx : int = hash_key(key, n)
+    var head : int = fmemget(st + 2 + idx)
+    var node : int = ll_find(head, key)
+  in
+  (
+    panic_ifn(node);
+    fmemget(node + 1)
+  )
+
+  fun table_contains(st : int, key : int) : int =
+  let
+    var n : int = fmemget(st)
+    var idx : int = hash_key(key, n)
+    var head : int = fmemget(st + 2 + idx)
+  in (ll_find(head, key) == 0) == 0
+
+  fun table_size(st : int) : int = fmemget(st + 1)
+
+  fun table_it_new(st : int) : int =
+  let
+    var it : int = fm_alloc(3)
+  in
+  (
+    fmemset(it, 0);
+    fmemset(it + 1, -1);
+    fmemset(it + 2, st);
+    table_it_next(it);
+    it
+  )
+
+  fun table_it_free(it : int) : void = fm_free(it)
+
+  fun table_it_is_end(it : int) : int =
+  let
+    var node : int = fmemget(it)
+  in node == 0
+
+  fun table_it_get_key(it : int) : int =
+  let
+    var node : int = fmemget(it)
+  in
+  (
+    panic_ifn(node);
+    fmemget(node)
+  )
+
+  fun table_it_get_val(it : int) : int =
+  let
+    var node : int = fmemget(it)
+  in
+  (
+    panic_ifn(node);
+    fmemget(node + 1)
+  )
+
+  fun table_it_next(it : int) : void =
+  let
+    var node : int = fmemget(it)
+    var idx : int = fmemget(it + 1)
+    var st : int = fmemget(it + 2)
+    var n : int = fmemget(st)
+  in
+    if (idx < n) then (
+      if (node) then (
+        node = fmemget(node + 2)
+      );	
+      if (!node) then
+      let
+        var found : int = 0
+      in
+      (
+        idx = idx + 1;
+        while (found == 0) do
+          if (idx == n) then found = 1
+          else if (fmemget(st + 2 + idx)) then found = 1
+          else idx = idx + 1
+        ;
+      
+
+        node = (if (idx < n) then fmemget(st + 2 + idx) else 0);
+        fmemset(it + 1, idx)
+      )
+      ;
+
+      fmemset(it, node)
+    )
+
+
+
+
+
+
+
+
+
+    fun cmp(arr: int, i: int, j: int) : int =
+    fmemget(arr + i) - fmemget(arr + j)
+
+  fun swap(arr : int, i : int, j : int) : void =
+  let
+    var vi : int = fmemget(arr + i)
+  in
+  (
+    fmemset(arr + i, fmemget(arr + j));
+    fmemset(arr + j, vi)
+  )
+
+  fun sort(arr: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  while (i < len) do
+    let
+      var j : int = i
+    in
+    (
+      while (if (j > 0) then cmp(arr, j, j - 1) < 0 else 0) do (
+        swap(arr, j, j - 1);
+        j = j - 1
+      );
+
+      i = i + 1
+    )
+
+  fun print_arr(arr: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  (
+    sort(arr, len);
+    putc(91);
+
+    while (i < len)  do (
+      print_int(fmemget(arr + i));
+      if (i + 1 < len) then (
+        putc(44);
+        putc(32)
+      );
+      i = i + 1
+    );
+
+    putc(93);
+    putc(10)
+  )
+
+  fun sort2(arr1: int arr2: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  while (i < len) do
+    let
+      var j : int = i
+    in
+    (
+      while (if (j > 0) then cmp(arr1, j, j - 1) < 0 else 0) do (
+        swap(arr1, j, j - 1);
+	swap(arr2, j, j - 1);
+        j = j - 1
+      );
+
+      i = i + 1
+    )
+
+  fun print_arr2(arr1: int, arr2: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  (
+    sort2(arr1, arr2, len);
+    putc(91);
+
+    while (i < len)  do (
+      putc(40);
+      print_int(fmemget(arr1 + i));
+      putc(59);
+      print_int(fmemget(arr2 + i));
+      putc(41);
+      if (i + 1 < len) then (
+        putc(44);
+        putc(32)
+      );
+      i = i + 1
+    );
+
+    putc(93);
+    putc(10)
+  )
+
+  fun print_keys(st: int) : void =
+  let
+    var len : int = table_size(st)
+    var keys : int = fm_alloc(len)
+    var it : int = table_it_new(st)
+    var i : int = 0
+  in
+  (
+  
+    while (i < len) do (
+      fmemset(keys + i, table_it_get_key(it));
+      table_it_next(it);
+      i = i + 1
+    );
+
+    print_arr(keys, len);
+    table_it_free(it);
+    fm_free(keys)
+  )
+
+  fun print_vals(st: int) : void =
+  let
+    var len : int = table_size(st)
+    var vals : int = fm_alloc(len)
+    var it : int = table_it_new(st)
+    var i : int = 0
+  in
+  (
+  
+    while (i < len) do (
+      fmemset(vals + i, table_it_get_val(it));
+      table_it_next(it);
+      i = i + 1
+    );
+
+    print_arr(vals, len);
+    table_it_free(it);
+    fm_free(vals)
+  )
+
+  fun print_table(st: int) : void =
+  let
+    var len : int = table_size(st)
+    var keys : int = fm_alloc(len)
+    var vals : int = fm_alloc(len)
+    var it : int = table_it_new(st)
+    var i : int = 0
+  in
+  (
+  
+    while (i < len) do (
+      fmemset(keys + i, table_it_get_key(it));
+      fmemset(vals + i, table_it_get_val(it));
+      table_it_next(it);
+      i = i + 1
+    );
+
+    print_arr2(keys, vals, len);
+    table_it_free(it);
+    fm_free(keys);
+    fm_free(vals)
+  )
+
+
+
+
+  fun test1() : void =
+  let
+    var st : int = table_new()
+  in
+  (
+    print_keys(st);
+    print_vals(st);
+    print_table(st);
+    table_free(st)
+  )
+
+  fun test2() : void =
+  let
+    var st : int = table_new()
+    var i : int = 0
+  in
+  (
+    printnl_int(table_put(st, 3, 78));
+    printnl_int(table_put(st, 6, 4));
+    printnl_int(table_put(st, 2, 45));
+    printnl_int(table_put(st, 1, 27));
+    printnl_int(table_put(st, 2, 37));
+    printnl_int(table_put(st, 8, 44));
+
+    i = 0;
+    while (i < 10) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+
+    print_keys(st);
+    print_vals(st);
+    print_table(st);
+    table_free(st)
+  )
+
+  fun test3() : void =
+  let
+    var st : int = table_new()
+    var i : int = 0
+  in
+  (
+    i = 0;
+    while (i < 20) do (
+      printnl_int(table_put(st, i, i * i));
+      i = i + 1
+    );
+
+    i = 0;
+    while (i < 20) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    i = 0;
+    while (i < 20) do (
+      printnl_int(table_delete(st, i));
+      i = i + 1
+    )
+    
+    print_table(st);
+    table_free(st)
+  )
+
+  fun test4() : void =
+  let
+    var st : int = table_new()
+    var i : int = 0
+  in
+  (
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_put(st, i, i * i));
+      i = i + 1
+    );
+
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    i = -12;
+    while (i < 4) do (
+      printnl_int(table_delete(st, i));
+      i = i + 1
+    );
+
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    i = 4;
+    while (i < 28) do (
+      printnl_int(table_put(st, i, 4 * i * i - 5));
+      i = i + 1
+    );
+
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    i = -37;
+    while (i < 8) do (
+      printnl_int(table_delete(st, i));
+      i = i + 1
+    );
+
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    i = 16;
+    while (i < 39) do (
+      printnl_int(table_put(st, i, -2 * i + 50));
+      i = i + 1
+    );
+
+    i = -40;
+    while (i < 40) do (
+      printnl_int(table_contains(st, i));
+      i = i + 1
+    );
+    print_table(st);
+
+    table_free(st)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3();
+  test4()
+)

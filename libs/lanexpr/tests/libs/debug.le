@@ -1,0 +1,19 @@
+let
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+in ()

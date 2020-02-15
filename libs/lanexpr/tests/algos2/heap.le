@@ -1,0 +1,349 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+  fun rng_new(seed: int) : int =
+  let
+    var rng : int = fm_alloc(1)
+  in
+  (
+    fmemset(rng, seed);
+    rng
+  )
+
+  fun rng_free(rng: int) : void = fm_free(rng)
+
+  fun rng_next(rng: int) : int =
+  let
+    var next : int = fmemget(rng)
+  in
+  (
+    next = next * 1103515245 + 12345;
+    fmemset(rng, next);
+    (next / 65536) % 32768
+  )
+
+
+
+
+
+
+
+
+  fun heap_resize(h : int, new_cap : int) : void =
+  let
+    var len : int = fmemget(h)
+    var arr : int = fmemget(h + 2)
+    var new_arr : int = fm_alloc(new_cap)
+  in
+  (
+    fmemcpy(new_arr, arr, len);
+    fmemset(h + 1, new_cap);
+    fmemset(h + 2, new_arr);
+    fm_free(arr)
+  )
+
+  fun node_addr(h : int, k : int) : int =
+  let
+    var arr : int = fmemget(h + 2)
+  in arr - 1 + k
+
+  fun node_swap(h: int, p: int, q: int) : void =
+  let
+    var pval : int = fmemget(node_addr(h, p))
+  in
+  (
+    fmemset(node_addr(h, p), fmemget(node_addr(h, q)));
+    fmemset(node_addr(h, q), pval)
+  )
+
+  fun node_cmp(h : int, p: int, q : int) : int =
+    fmemget(node_addr(h, p)) - fmemget(node_addr(h, q))
+
+  fun swim(h : int, k : int) : void = 
+    while (if(k > 1) then node_cmp(h, k, k / 2) < 0 else 0) do (
+      node_swap(h, k, k / 2);
+      k = k / 2
+    )
+
+  fun sink(h : int, k : int) : void =
+  let
+    var valid : int = 0
+    var len : int = fmemget(h)
+    var j : int = 0
+  in
+    while (valid == 0) do (
+      if (2 * k > len) then (
+        valid = 1
+      ) else (
+        j = 2 * k;
+        if (if(j < len) then node_cmp(h, j + 1, j) < 0 else 0) then (
+          j = j + 1
+        )
+
+        if (node_cmp(h, k, j) < 0) then (
+          valid = 1
+        ) else (
+          node_swap(h, k, j);
+          k = j
+        )
+      )
+    )
+
+  fun heap_new() : int =
+  let
+    var h : int = fm_alloc(3)
+    var arr : int= fm_alloc(4)
+  in
+  (
+    fmemset(h, 0);
+    fmemset(h + 1, 4);
+    fmemset(h + 2, arr);
+    h
+  )
+
+  fun heap_free(h: int) : void =
+  (
+    fm_free(h + 2);
+    fm_free(h)
+  )
+
+  fun heap_push(h : int, val : int) : void =
+  let
+    var len : int= fmemget(h)
+    var cap : int = fmemget(h + 1)
+  in
+  (
+    if (len == cap) then (
+      heap_resize(h, cap * 2)
+    );
+
+    fmemset(node_addr(h, len + 1), val);
+    fmemset(h, len + 1);
+    swim(h, len + 1)
+  )
+
+  fun heap_pop(h: int) : int =
+  let
+    var len : int = fmemget(h)
+    var res : int = 0
+  in
+  (
+    panic_ifn(len > 0);
+    res = fmemget(node_addr(h, 1));
+
+    node_swap(h, 1, len);
+    fmemset(h, len - 1);
+    sink(h, 1);
+    res
+  )
+
+  fun heap_min(h: int) : int =
+  (
+    panic_ifn(heap_size(h) > 0);
+    fmemget(node_addr(h, 1))
+  )
+
+  fun heap_size(h : int) : int = fmemget(h)
+
+
+
+
+
+
+
+
+
+
+
+
+
+  fun print_arr(arr: int, len: int) : void =
+  let
+    var i : int = 0
+  in
+  (
+    putc(91);
+
+    while (i < len)  do (
+      print_int(fmemget(arr + i));
+      if (i + 1 < len) then (
+        putc(44);
+        putc(32)
+      );
+      i = i + 1
+    );
+
+    putc(93);
+    putc(10)
+  )
+
+  fun sort(arr : int, len : int) : void =
+  let 
+    var h : int = heap_new()
+    var i : int = 0
+  in
+  (
+
+    while (i < len) do (
+      heap_push(h, fmemget(arr + i));
+      i = i + 1
+    )
+
+    i = 0;
+    while (i < len) do (
+      fmemset(arr + i, heap_pop(h));
+      i = i + 1
+    );
+
+    heap_free(h)
+  )
+
+  fun test1() : void =
+  let
+    var arr : int = fm_alloc(7)
+  in
+  (
+    fmemset(arr + 0, 12);
+    fmemset(arr + 1, 8);
+    fmemset(arr + 2, -6);
+    fmemset(arr + 3, 25);
+    fmemset(arr + 4, 18);
+    fmemset(arr + 5, 12);
+    fmemset(arr + 6, -2);
+    sort(arr, 7);
+    print_arr(arr, 7);
+    fm_free(arr)
+  )
+
+  fun test2() : void =
+  let
+    var len : int = 50
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, -2 * i * i + 5 * i - 8);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test3() : void =
+  let
+    var len : int = 107
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, 1000 + 12 * i);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test4() : void =
+  let
+    var len : int = 78
+    var arr : int = fm_alloc(len)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, 1000 - 12 * i);
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    fm_free(arr)
+  )
+
+  fun test5() : void =
+  let
+    var len : int = 113
+    var arr : int = fm_alloc(len)
+    var rng : int = rng_new(78)
+    var i : int = 0
+  in
+  (
+    while (i < len) do (
+      fmemset(arr + i, rng_next(rng));
+      i = i + 1
+    );
+
+    sort(arr, len);
+    print_arr(arr, len);
+    rng_free(rng);
+    fm_free(arr)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3();
+  test4();
+  test5()
+)

@@ -1,4 +1,7 @@
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::num::Wrapping;
 
 use irintsm::ir;
 
@@ -62,7 +65,8 @@ impl Frame {
     }
 
     fn pop_n_ops(&mut self, n: usize) -> Vec<RTVal> {
-        (0..n).map(|_| self.pop_op()).rev().collect()
+        let res: Vec<_> = (0..n).map(|_| self.pop_op()).collect();
+        res.into_iter().rev().collect()
     }
 
     fn push_op(&mut self, val: RTVal) {
@@ -87,13 +91,78 @@ impl CodeAddress {
     }
 }
 
+const FLAT_MEMORY_SIZE: i32 = 16 * 1024 * 1024;
+
+pub struct FlatMemory {
+    data: Vec<i32>,
+}
+
+impl FlatMemory {
+    pub fn new() -> Self {
+        FlatMemory { data: vec![] }
+    }
+
+    pub fn load(&self, pos: i32) -> i32 {
+        self.check_idx(pos);
+        if self.data.len() == 0 {
+            0
+        } else {
+            self.data[pos as usize]
+        }
+    }
+
+    pub fn store(&mut self, pos: i32, val: i32) {
+        self.check_idx(pos);
+        self.lazy_init();
+        self.data[pos as usize] = val;
+    }
+
+    pub fn copy(&mut self, dst: i32, src: i32, len: i32) {
+        self.check_idx(src);
+        self.check_idx(src + len - 1);
+        self.check_idx(dst);
+        self.check_idx(dst + len - 1);
+        if self.data.len() == 0 {
+            return;
+        }
+
+        let data_ptr = self.data.as_mut_ptr();
+        unsafe {
+            let src_ptr = data_ptr.offset(src as isize);
+            let dst_ptr = data_ptr.offset(dst as isize);
+            std::ptr::copy(src_ptr, dst_ptr, len as usize);
+        }
+    }
+
+    fn check_idx(&self, idx: i32) {
+        if idx < 0 {
+            panic!("flat memory: trying to access negative index");
+        }
+        if idx >= FLAT_MEMORY_SIZE {
+            panic!("flat memory: trying to access beyond fmem size");
+        }
+    }
+
+    fn lazy_init(&mut self) {
+        if self.data.len() == 0 {
+            self.data = Vec::with_capacity(FLAT_MEMORY_SIZE as usize);
+            unsafe {
+                self.data.set_len(FLAT_MEMORY_SIZE as usize);
+            }
+        }
+    }
+}
+
 pub struct Runtime {
     code: ir::Module,
     frames: Vec<Frame>,
     call_stack: Vec<CodeAddress>,
     ins_status: Option<ExitCode>, //status of last executed instruction
 
+    stdin: Vec<u8>,
+    stdin_pos: usize,
     stdout: Vec<u8>,
+    fmem: FlatMemory,
 }
 
 impl Runtime {
@@ -105,7 +174,10 @@ impl Runtime {
             call_stack: vec![],
             ins_status: None,
 
+            stdin: vec![],
+            stdin_pos: 0,
             stdout: vec![],
+            fmem: FlatMemory::new(),
         };
         res.reset();
         res
@@ -138,6 +210,21 @@ impl Runtime {
                 return ret;
             }
         }
+    }
+
+    /// Set stdin stream from raw bytes data
+    pub fn reset_stdin_raw(&mut self, data: &[u8]) {
+        self.stdin = Vec::from(data);
+        self.stdin_pos = 0;
+    }
+
+    /// Set stdin stream from binary file
+    pub fn reset_stdin_path(&mut self, path: &str) {
+        let mut f = File::open(path).expect("Failed to open stdin file");
+        self.stdin.clear();
+        f.read_to_end(&mut self.stdin)
+            .expect("Failed to read stdin file");
+        self.stdin_pos = 0;
     }
 
     /// Returns the output of the program
@@ -255,16 +342,19 @@ impl Runtime {
 
     fn exec_ins_opbin(&mut self, ins: ir::InsOpbin) {
         let (src1, src2) = self.pop_2_ops();
+        let (src1, src2) = (Wrapping(src1.0), Wrapping(src2.0));
 
         let res = match ins {
-            ir::InsOpbin::Add => src1.0 + src2.0,
-            ir::InsOpbin::Sub => src1.0 - src2.0,
-            ir::InsOpbin::Mul => src1.0 * src2.0,
-            ir::InsOpbin::Div => src1.0 / src2.0,
-            ir::InsOpbin::Rem => src1.0 % src2.0,
+            ir::InsOpbin::Add => src1 + src2,
+            ir::InsOpbin::Sub => src1 - src2,
+            ir::InsOpbin::Mul => src1 * src2,
+            ir::InsOpbin::Div => src1 / src2,
+            ir::InsOpbin::Rem => src1 % src2,
         };
 
-        self.push_op(RTVal(res));
+        //println!("{:?}: {} . {} => {}", ins, src1.0, src2.0, res.0);
+
+        self.push_op(RTVal(res.0));
         self.next_ins();
     }
 
@@ -298,8 +388,10 @@ impl Runtime {
     fn exec_ins_call(&mut self, ins: ir::InsCall) {
         let args = self.pop_n_ops(ins.nb_args());
         let fun = self.code.get_fun(ins.fun());
+        //println!("call {}: {:?}", fun.id(), args);
         if fun.is_extern() {
-            self.call_native(ins.fun(), args);
+            let ret = self.call_native(ins.fun(), args);
+            self.push_op(ret);
             self.next_ins();
             return;
         }
@@ -320,20 +412,32 @@ impl Runtime {
         self.next_ins();
     }
 
-    fn call_native(&mut self, fun: ir::FunctionRef, args: Vec<RTVal>) {
+    fn call_native(&mut self, fun: ir::FunctionRef, args: Vec<RTVal>) -> RTVal {
         let fun_putc = ir::FunctionRef::new(257);
         let fun_exit = ir::FunctionRef::new(258);
+        let fun_getc = ir::FunctionRef::new(259);
+        let fun_fmemget = ir::FunctionRef::new(260);
+        let fun_fmemset = ir::FunctionRef::new(261);
+        let fun_fmemcpy = ir::FunctionRef::new(262);
 
         if fun == fun_putc {
-            self.call_native_putc(args);
+            self.call_native_putc(args)
         } else if fun == fun_exit {
-            self.call_native_exit(args);
+            self.call_native_exit(args)
+        } else if fun == fun_getc {
+            self.call_native_getc(args)
+        } else if fun == fun_fmemget {
+            self.call_native_fmemget(args)
+        } else if fun == fun_fmemset {
+            self.call_native_fmemset(args)
+        } else if fun == fun_fmemcpy {
+            self.call_native_fmemcpy(args)
         } else {
-            panic!("Failed to called extern function: unknown id {}", fun);
+            panic!("Failed to called extern function: unknown id {}", fun)
         }
     }
 
-    fn call_native_putc(&mut self, args: Vec<RTVal>) {
+    fn call_native_putc(&mut self, args: Vec<RTVal>) -> RTVal {
         if args.len() != 1 {
             panic!(
                 "Failed to call putc: expected 1 argument, got {}",
@@ -343,10 +447,10 @@ impl Runtime {
 
         let bval = args[0].0 as u8;
         self.stdout.push(bval);
-        self.push_op(RTVal(0));
+        RTVal(0)
     }
 
-    fn call_native_exit(&mut self, args: Vec<RTVal>) {
+    fn call_native_exit(&mut self, args: Vec<RTVal>) -> RTVal {
         if args.len() != 1 {
             panic!(
                 "Failed to call exit: expected 1 argument, got {}",
@@ -356,5 +460,67 @@ impl Runtime {
 
         let exit_val = args[0].0 as u8;
         self.ins_status = Some(ExitCode(exit_val));
+        RTVal(0)
+    }
+
+    fn call_native_getc(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 0 {
+            panic!(
+                "Failed to call getc: expected 0 argument, got {}",
+                args.len()
+            )
+        }
+
+        match self.stdin.get(self.stdin_pos) {
+            Some(bval) => {
+                self.stdin_pos += 1;
+                RTVal(*bval as i32)
+            }
+            None => RTVal(-1), //eof
+        }
+    }
+
+    fn call_native_fmemget(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 1 {
+            panic!(
+                "Failed to call fmemget: expected 1 argument, got {}",
+                args.len()
+            )
+        }
+
+        let pos = args[0].0;
+        let val = self.fmem.load(pos);
+        //println!("get @{} => {}", pos, val);
+        RTVal(val)
+    }
+
+    fn call_native_fmemset(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 2 {
+            panic!(
+                "Failed to call fmemdet: expected 2 arguments, got {}",
+                args.len()
+            )
+        }
+
+        let pos = args[0].0;
+        let val = args[1].0;
+        self.fmem.store(pos, val);
+        //println!("set @{}, {}", pos, val);
+        RTVal(0)
+    }
+
+    fn call_native_fmemcpy(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 3 {
+            panic!(
+                "Failed to call fmemdet: expected 3 arguments, got {}",
+                args.len()
+            )
+        }
+
+        let dst = args[0].0;
+        let src = args[1].0;
+        let len = args[2].0;
+        self.fmem.copy(dst, src, len);
+        RTVal(0)
     }
 }

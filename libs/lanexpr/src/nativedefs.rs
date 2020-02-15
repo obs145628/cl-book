@@ -114,6 +114,34 @@ lazy_static! {
         "putc",
         FnType::new(vec![Type::Val(TypeVal::Int)], Type::Void)
     );
+    pub static ref STD_FUN_EXIT: NativeFun = NativeFun::new(
+        "exit",
+        FnType::new(vec![Type::Val(TypeVal::Int)], Type::Void)
+    );
+    pub static ref STD_FUN_GETC: NativeFun =
+        NativeFun::new("getc", FnType::new(vec![], Type::Val(TypeVal::Int)));
+    pub static ref STD_FUN_FMEMGET: NativeFun = NativeFun::new(
+        "fmemget",
+        FnType::new(vec![Type::Val(TypeVal::Int)], Type::Val(TypeVal::Int))
+    );
+    pub static ref STD_FUN_FMEMSET: NativeFun = NativeFun::new(
+        "fmemset",
+        FnType::new(
+            vec![Type::Val(TypeVal::Int), Type::Val(TypeVal::Int)],
+            Type::Void
+        )
+    );
+    pub static ref STD_FUN_FMEMCPY: NativeFun = NativeFun::new(
+        "fmemcpy",
+        FnType::new(
+            vec![
+                Type::Val(TypeVal::Int),
+                Type::Val(TypeVal::Int),
+                Type::Val(TypeVal::Int)
+            ],
+            Type::Void
+        )
+    );
     pub static ref SPE_MAIN: NativeFun =
         NativeFun::new("@spe:__main", FnType::new(vec![], Type::Void));
     pub static ref SPE_NATIVE_DEFS: NativeFun =
@@ -124,6 +152,13 @@ lazy_static! {
         &OP_SET, &OP_EQ, &OP_LT, &OP_GT, &OP_ADD, &OP_SUB, &OP_MUL, &OP_DIV, &OP_MOD, &OP_NEG,
         &OP_NOT
     ];
-    pub static ref STD_FUNS_LIST: Vec<&'static NativeFun> = vec![&STD_FUN_PUTC];
+    pub static ref STD_FUNS_LIST: Vec<&'static NativeFun> = vec![
+        &STD_FUN_PUTC,
+        &STD_FUN_EXIT,
+        &STD_FUN_GETC,
+        &STD_FUN_FMEMGET,
+        &STD_FUN_FMEMSET,
+        &STD_FUN_FMEMCPY
+    ];
     pub static ref TYPES_LIST: Vec<&'static NativeType> = vec![&TYPE_INT, &TYPE_VOID];
 }

@@ -106,7 +106,9 @@ impl<'a> Translater<'a> {
     }
 
     fn add_native_defs(&mut self) {
-        self.add_standard_fn("putc");
+        for def in nativedefs::STD_FUNS_LIST.iter() {
+            self.add_standard_fn(def.name());
+        }
     }
 
     fn add_standard_fn(&mut self, name: &str) {

@@ -1,4 +1,7 @@
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::num::Wrapping;
 
 use irint3a::ir;
 
@@ -105,13 +108,78 @@ impl MemAddress {
     }
 }
 
+const FLAT_MEMORY_SIZE: i32 = 16 * 1024 * 1024;
+
+pub struct FlatMemory {
+    data: Vec<i32>,
+}
+
+impl FlatMemory {
+    pub fn new() -> Self {
+        FlatMemory { data: vec![] }
+    }
+
+    pub fn load(&self, pos: i32) -> i32 {
+        self.check_idx(pos);
+        if self.data.len() == 0 {
+            0
+        } else {
+            self.data[pos as usize]
+        }
+    }
+
+    pub fn store(&mut self, pos: i32, val: i32) {
+        self.check_idx(pos);
+        self.lazy_init();
+        self.data[pos as usize] = val;
+    }
+
+    pub fn copy(&mut self, dst: i32, src: i32, len: i32) {
+        self.check_idx(src);
+        self.check_idx(src + len - 1);
+        self.check_idx(dst);
+        self.check_idx(dst + len - 1);
+        if self.data.len() == 0 {
+            return;
+        }
+
+        let data_ptr = self.data.as_mut_ptr();
+        unsafe {
+            let src_ptr = data_ptr.offset(src as isize);
+            let dst_ptr = data_ptr.offset(dst as isize);
+            std::ptr::copy(src_ptr, dst_ptr, len as usize);
+        }
+    }
+
+    fn check_idx(&self, idx: i32) {
+        if idx < 0 {
+            panic!("flat memory: trying to access negative index");
+        }
+        if idx >= FLAT_MEMORY_SIZE {
+            panic!("flat memory: trying to access beyond fmem size");
+        }
+    }
+
+    fn lazy_init(&mut self) {
+        if self.data.len() == 0 {
+            self.data = Vec::with_capacity(FLAT_MEMORY_SIZE as usize);
+            unsafe {
+                self.data.set_len(FLAT_MEMORY_SIZE as usize);
+            }
+        }
+    }
+}
+
 pub struct Runtime {
     code: ir::Module,
     frames: Vec<Frame>,
     call_stack: Vec<CodeAddress>,
     ins_status: Option<ExitCode>, //status of last executed instruction
 
+    stdin: Vec<u8>,
+    stdin_pos: usize,
     stdout: Vec<u8>,
+    fmem: FlatMemory,
 }
 
 impl Runtime {
@@ -123,7 +191,10 @@ impl Runtime {
             call_stack: vec![],
             ins_status: None,
 
+            stdin: vec![],
+            stdin_pos: 0,
             stdout: vec![],
+            fmem: FlatMemory::new(),
         };
         res.reset();
         res
@@ -155,6 +226,21 @@ impl Runtime {
                 return ret;
             }
         }
+    }
+
+    /// Set stdin stream from raw bytes data
+    pub fn reset_stdin_raw(&mut self, data: &[u8]) {
+        self.stdin = Vec::from(data);
+        self.stdin_pos = 0;
+    }
+
+    /// Set stdin stream from binary file
+    pub fn reset_stdin_path(&mut self, path: &str) {
+        let mut f = File::open(path).expect("Failed to open stdin file");
+        self.stdin.clear();
+        f.read_to_end(&mut self.stdin)
+            .expect("Failed to read stdin file");
+        self.stdin_pos = 0;
     }
 
     /// Returns the output of the program
@@ -231,7 +317,7 @@ impl Runtime {
 
     fn exec_ins(&mut self, ins: ir::Ins) {
         /*
-            println!(
+        println!(
                 "exec ins {:?} at {:?}",
                 ins,
                 self.call_stack.last().unwrap()
@@ -268,12 +354,28 @@ impl Runtime {
         let src_addr = MemAddress(self.get_reg(ins.src()));
         self.set_reg(ins.dst(), self.load(&src_addr));
         self.next_ins();
+        /*
+        println!(
+                "load r{}, r{} ({})",
+                ins.dst().0,
+                ins.src().0,
+                self.load(&src_addr).0,
+            );
+        */
     }
 
     fn exec_ins_store(&mut self, ins: ir::InsStore) {
         let dst_addr = MemAddress(self.get_reg(ins.dst()));
         self.store(&dst_addr, self.get_reg(ins.src()));
         self.next_ins();
+        /*
+        println!(
+                "store r{}, r{} ({})",
+                ins.dst().0,
+                ins.src().0,
+                self.get_reg(ins.src()).0,
+            );
+        */
     }
 
     fn exec_ins_alloca(&mut self, ins: ir::InsAlloca) {
@@ -285,8 +387,8 @@ impl Runtime {
     }
 
     fn exec_ins_opbin(&mut self, ins: ir::InsOpbin) {
-        let src1 = self.get_reg(ins.src1()).0;
-        let src2 = self.get_reg(ins.src2()).0;
+        let src1 = Wrapping(self.get_reg(ins.src1()).0);
+        let src2 = Wrapping(self.get_reg(ins.src2()).0);
 
         let res = match ins.kind() {
             ir::InsOpbinKind::Add => src1 + src2,
@@ -296,7 +398,7 @@ impl Runtime {
             ir::InsOpbinKind::Mod => src1 % src2,
         };
 
-        self.set_reg(ins.dst(), RTVal(res));
+        self.set_reg(ins.dst(), RTVal(res.0));
         self.next_ins();
     }
 
@@ -316,6 +418,7 @@ impl Runtime {
 
     fn exec_ins_jump(&mut self, ins: ir::InsJump) {
         self.call_stack.last_mut().unwrap().jump_to_bb(ins.dst());
+        //println!("jump L{}", ins.dst().0);
     }
 
     fn exec_ins_br(&mut self, ins: ir::InsBr) {
@@ -326,23 +429,33 @@ impl Runtime {
             ins.dst_false()
         };
         self.call_stack.last_mut().unwrap().jump_to_bb(next_bb);
+        /*
+        println!(
+                "br r{}, L{}, L{}, (L{})",
+                ins.src().0,
+                ins.dst_true().0,
+                ins.dst_false().0,
+                next_bb.0
+            );
+        */
     }
 
     fn exec_ins_call(&mut self, ins: ir::InsCall) {
-        //TODO: extern functions
         let args = ins.args().iter().map(|x| self.get_reg(*x)).collect();
         let fun = self.code.get_fun(ins.fun()).expect(&format!(
             "Failed to call function: unkown function address {}",
             ins.fun().0
         ));
         if fun.is_extern() {
-            self.call_native(ins.fun(), args);
+            let ret = self.call_native(ins.fun(), args);
+            self.set_reg(ins.dst(), ret);
             self.next_ins();
             return;
         }
 
         self.frames.push(Frame::new_from_call(&args, ins.dst()));
         self.call_stack.push(self.begin_of_fun(ins.fun()));
+        //println!("call F{}", ins.fun().0);
     }
 
     fn exec_ins_ret(&mut self, ins: ir::InsRet) {
@@ -358,15 +471,19 @@ impl Runtime {
         self.set_reg(ret_reg, ret_val);
     }
 
-    fn call_native(&mut self, fun: ir::FunctionId, args: Vec<RTVal>) {
+    fn call_native(&mut self, fun: ir::FunctionId, args: Vec<RTVal>) -> RTVal {
         match fun.0 {
             257 => self.call_native_putc(args),
             258 => self.call_native_exit(args),
+            259 => self.call_native_getc(args),
+            260 => self.call_native_fmemget(args),
+            261 => self.call_native_fmemset(args),
+            262 => self.call_native_fmemcpy(args),
             _ => panic!("Failed to called extern function: unknown id {}", fun.0),
         }
     }
 
-    fn call_native_putc(&mut self, args: Vec<RTVal>) {
+    fn call_native_putc(&mut self, args: Vec<RTVal>) -> RTVal {
         if args.len() != 1 {
             panic!(
                 "Failed to call putc: expected 1 argument, got {}",
@@ -376,9 +493,10 @@ impl Runtime {
 
         let bval = args[0].0 as u8;
         self.stdout.push(bval);
+        RTVal(0)
     }
 
-    fn call_native_exit(&mut self, args: Vec<RTVal>) {
+    fn call_native_exit(&mut self, args: Vec<RTVal>) -> RTVal {
         if args.len() != 1 {
             panic!(
                 "Failed to call exit: expected 1 argument, got {}",
@@ -388,5 +506,67 @@ impl Runtime {
 
         let exit_val = args[0].0 as u8;
         self.ins_status = Some(ExitCode(exit_val));
+        RTVal(0)
+    }
+
+    fn call_native_getc(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 0 {
+            panic!(
+                "Failed to call getc: expected 0 argument, got {}",
+                args.len()
+            )
+        }
+
+        match self.stdin.get(self.stdin_pos) {
+            Some(bval) => {
+                self.stdin_pos += 1;
+                RTVal(*bval as i32)
+            }
+            None => RTVal(-1), //eof
+        }
+    }
+
+    fn call_native_fmemget(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 1 {
+            panic!(
+                "Failed to call fmemget: expected 1 argument, got {}",
+                args.len()
+            )
+        }
+
+        let pos = args[0].0;
+        let val = self.fmem.load(pos);
+        //println!("get @{} => {}", pos, val);
+        RTVal(val)
+    }
+
+    fn call_native_fmemset(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 2 {
+            panic!(
+                "Failed to call fmemdet: expected 2 arguments, got {}",
+                args.len()
+            )
+        }
+
+        let pos = args[0].0;
+        let val = args[1].0;
+        self.fmem.store(pos, val);
+        //println!("set @{}, {}", pos, val);
+        RTVal(0)
+    }
+
+    fn call_native_fmemcpy(&mut self, args: Vec<RTVal>) -> RTVal {
+        if args.len() != 3 {
+            panic!(
+                "Failed to call fmemdet: expected 3 arguments, got {}",
+                args.len()
+            )
+        }
+
+        let dst = args[0].0;
+        let src = args[1].0;
+        let len = args[2].0;
+        self.fmem.copy(dst, src, len);
+        RTVal(0)
     }
 }

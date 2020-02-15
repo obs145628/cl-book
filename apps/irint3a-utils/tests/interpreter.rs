@@ -1,105 +1,158 @@
-use std::collections::hash_map::DefaultHasher;
-use std::fs::File;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::io::Read;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
+use obtests::bintest::{TestRunner, UserRunner};
 
-use interp_irint3a::runtime;
-use irint3a::ir;
+struct IRRunner {}
+impl UserRunner for IRRunner {
+    fn run(&self, path: &str, _input_name: Option<String>, input_path: Option<String>) -> Vec<u8> {
+        let input_path: Option<&str> = match input_path.as_ref() {
+            Some(x) => Some(x),
+            None => None,
+        };
 
-fn calculate_hash(t: &str) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
+        // parsing
+        let mut ps = lanexpr::parser::Parser::new_from_file(path);
+        let root = ps.parse();
 
-fn build_ref_file(path: &str) -> PathBuf {
-    let ref_path = Path::new(path).with_extension("out");
-    if ref_path.exists() {
-        return ref_path;
+        // type-checkinh
+        let mut tc = lanexpr::typecheck::TypeCheck::new();
+        tc.check(&root);
+        let ba = tc.get_bindings();
+
+        // translation
+        let tr = lanexpr::translater::irint3a::Translater::new(&root, &ba);
+
+        // execution
+        let code = tr.translate().0;
+        let mut rt = interp_irint3a::runtime::Runtime::new(code);
+        if let Some(input_path) = input_path {
+            rt.reset_stdin_path(input_path);
+        }
+        rt.run();
+        Vec::from(rt.stdout())
     }
-
-    let c_path = Path::new(path).with_extension("c");
-    let tmp_bin_path = format!("/tmp/cl_bin_tmp_{}.out", calculate_hash(path));
-
-    let _out = Command::new("gcc")
-        .args(&[c_path.to_str().unwrap(), "-o", &tmp_bin_path])
-        .output()
-        .expect(&format!(
-            "Failed to compile C file {} to build ref for {}",
-            c_path.to_str().unwrap(),
-            path,
-        ));
-
-    let c_out = Command::new(&tmp_bin_path).output().expect(&format!(
-        "Failed to run bin file compiled from C file {} to build ref for {}",
-        c_path.to_str().unwrap(),
-        path,
-    ));
-
-    std::fs::remove_file(&tmp_bin_path).expect("Failed to remove temporary bin file");
-
-    let mut ref_file = File::create(ref_path.clone()).expect("Failed to create ref file");
-    ref_file
-        .write_all(&c_out.stdout)
-        .expect("Failed to write to ref file");
-
-    ref_path
 }
 
-fn read_ref_file(path: &str) -> Vec<u8> {
-    let ref_path = build_ref_file(path);
-    let mut ref_file = File::open(ref_path).expect("Failed to open ref file");
-    let mut res = vec![];
-    ref_file
-        .read_to_end(&mut res)
-        .expect("Failed to read ref file");
-    res
-}
-
-fn compile_lanexpr(path: &str) -> ir::Module {
-    let mut ps = lanexpr::parser::Parser::new_from_file(path);
-    let root = ps.parse();
-
-    let mut tc = lanexpr::typecheck::TypeCheck::new();
-    tc.check(&root);
-    let ba = tc.get_bindings();
-
-    let tr = lanexpr::translater::irint3a::Translater::new(&root, &ba);
-    tr.translate().0
-}
-
-fn exec_lanexpr_file(path: &str) -> Vec<u8> {
-    let code = compile_lanexpr(path);
-    let mut rt = runtime::Runtime::new(code);
-    rt.run();
-    Vec::from(rt.stdout())
-}
-
-fn test_lanexpr(path: &str) {
-    let ref_bytes = read_ref_file(path);
-    let out_bytes = exec_lanexpr_file(path);
-
-    println!("REF:\n<BEG>{}<END>", String::from_utf8_lossy(&ref_bytes));
-    println!(" ME:\n<BEG>{}<END>", String::from_utf8_lossy(&out_bytes));
-    assert_eq!(ref_bytes, out_bytes);
+fn test_file(dir: &str, test_name: &str) {
+    let ur = IRRunner {};
+    let tr = TestRunner::new(dir.to_string(), test_name.to_string());
+    tr.run(&ur);
 }
 
 #[test]
-fn interpret_basics_printer() {
-    test_lanexpr("../../libs/lanexpr/tests/basics/printer.le");
+fn interp_irint3a_basics_printer() {
+    test_file("../../libs/lanexpr/tests/basics", "printer");
 }
 
 #[test]
-fn interpret_basics_fact() {
-    test_lanexpr("../../libs/lanexpr/tests/basics/fact.le");
+fn interp_irint3a_basics_fibo() {
+    test_file("../../libs/lanexpr/tests/basics", "fibo");
 }
 
 #[test]
-fn interpret_basics_fibo() {
-    test_lanexpr("../../libs/lanexpr/tests/basics/fibo.le");
+fn interp_irint3a_basics_fact() {
+    test_file("../../libs/lanexpr/tests/basics", "fact");
+}
+
+#[test]
+fn interp_irint3a_basics_cat() {
+    test_file("../../libs/lanexpr/tests/basics", "cat");
+}
+
+#[test]
+fn interp_irint3a_basics_calc() {
+    test_file("../../libs/lanexpr/tests/basics", "calc");
+}
+
+#[test]
+fn llvm_binary_basics_ivec() {
+    test_file("../../libs/lanexpr/tests/basics", "ivec");
+}
+
+#[test]
+fn interp_irint3a_algos1_binsearch() {
+    test_file("../../libs/lanexpr/tests/algos1", "binsearch");
+}
+
+#[test]
+fn interp_irint3a_algos1_queuell() {
+    test_file("../../libs/lanexpr/tests/algos1", "queuell");
+}
+
+#[test]
+fn interp_irint3a_algos1_stack() {
+    test_file("../../libs/lanexpr/tests/algos1", "stack");
+}
+
+#[test]
+fn interp_irint3a_algos1_stackfixed() {
+    test_file("../../libs/lanexpr/tests/algos1", "stackfixed");
+}
+
+#[test]
+fn interp_irint3a_algos1_stackll() {
+    test_file("../../libs/lanexpr/tests/algos1", "stackll");
+}
+
+#[test]
+fn interp_irint3a_algos1_unionfind() {
+    test_file("../../libs/lanexpr/tests/algos1", "unionfind");
+}
+
+#[test]
+fn interp_irint3a_algos2_3wquicksort() {
+    test_file("../../libs/lanexpr/tests/algos2", "3wquicksort");
+}
+
+#[test]
+fn interp_irint3a_algos2_bumergesort() {
+    test_file("../../libs/lanexpr/tests/algos2", "bumergesort");
+}
+
+#[test]
+fn interp_irint3a_algos2_heap() {
+    test_file("../../libs/lanexpr/tests/algos2", "heap");
+}
+
+#[test]
+fn interp_irint3a_algos2_heapsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "heapsort");
+}
+
+#[test]
+fn interp_irint3a_algos2_insertionsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "insertionsort");
+}
+
+#[test]
+fn interp_irint3a_algos2_quicksort() {
+    test_file("../../libs/lanexpr/tests/algos2", "quicksort");
+}
+
+#[test]
+fn interp_irint3a_algos2_selectionsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "selectionsort");
+}
+
+#[test]
+fn interp_irint3a_algos2_shellsort() {
+    test_file("../../libs/lanexpr/tests/algos2", "shellsort");
+}
+
+#[test]
+fn interp_irint3a_algos2_tdmergesort() {
+    test_file("../../libs/lanexpr/tests/algos2", "tdmergesort");
+}
+
+#[test]
+fn interp_irint3a_algos3_bsttable() {
+    test_file("../../libs/lanexpr/tests/algos3", "bsttable");
+}
+
+#[test]
+fn llvm_binary_algos3_hashtable() {
+    test_file("../../libs/lanexpr/tests/algos3", "hashtable");
+}
+
+#[test]
+fn interp_irint3a_algos3_lltable() {
+    test_file("../../libs/lanexpr/tests/algos3", "lltable");
 }

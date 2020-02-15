@@ -1,0 +1,198 @@
+let
+
+  fun print_int(x: int) : void = let
+
+     fun print_rec(x: int) : void =
+     	 if !(x == 0) then (
+	    print_rec(x / 10);
+	    putc(48 + (x % 10))
+	 )
+     in 
+
+     	if x < 0 then (
+     	   putc(45);
+	   print_rec(-x)
+     	)
+
+     	else if x == 0 then putc(48)
+	else print_rec(x)
+ 
+
+  fun printnl() : void = putc(10)
+
+  fun printnl_int(x: int) : void = (
+      print_int(x);
+      printnl()
+  )
+
+  fun fm_alloc(len: int) : int =
+    let
+      var top : int = fmemget(0)
+    in
+    (
+      top = (if (top) then top else 1);
+      fmemset(0, top + len);
+      top
+    )
+
+  fun fm_free(addr: int) : void = ()
+
+  fun panic() : void =
+    (
+      putc(80);
+      putc(65);
+      putc(78);
+      putc(73);
+      putc(67);
+      putc(33);
+      putc(10);
+      exit(1)
+    )
+
+  fun panic_ifn(cond: int) : void =
+    if (cond == 0) then
+      panic()
+
+
+
+
+  fun queue_new() : int =
+  let
+    var q : int = fm_alloc(3)
+  in
+  (
+    fmemset(q, 0);
+    fmemset(q + 1, 0);
+    fmemset(q + 2, 0);
+    q
+  )
+
+
+  fun queue_free(q: int) : void =
+  let
+    var node : int = fmemget(q)
+    var next : int = 0
+  in
+  (
+    while (node) do (
+      next = fmemget(node + 1);
+      fm_free(next);
+      node = next
+    );
+
+    fm_free(q)
+  )
+
+  fun queue_size(q : int) : int = fmemget(q + 2)
+
+  fun queue_push(q : int, val: int) : void =
+  let
+    var last : int = fmemget(q + 1)
+    var new_last : int = fm_alloc(2)
+  in
+  (
+    fmemset(new_last, val);
+    fmemset(new_last + 1, 0);
+    fmemset(q + 1, new_last);
+    
+    if (last == 0) then (
+      fmemset(q, new_last)
+    ) else (
+      fmemset(last + 1, new_last)
+    );
+
+    fmemset(q + 2, fmemget(q + 2) + 1)
+  )
+
+  fun queue_pop(q: int) : int =
+  let
+    var first : int = fmemget(q)
+    var res : int = 0
+    var new_first : int = 0
+  in
+  (
+    panic_ifn(first);
+    res = fmemget(first);
+
+    new_first = fmemget(first + 1);
+    fmemset(q, new_first);
+    if (new_first == 0) then (
+      fmemset(q + 1, 0)
+    );
+    fm_free(first);
+
+    fmemset(q + 2, fmemget(q + 2) - 1);
+    res
+  )
+
+
+
+  fun test1() : void =
+  let
+    var q : int = queue_new()
+  in
+  (
+    printnl_int(queue_size(q));
+
+    queue_push(q, 10);
+    queue_push(q, 18);
+    queue_push(q, 23);
+    queue_push(q, 45);
+
+    while (queue_size(q)) do (
+      printnl_int(queue_pop(q))
+    );
+
+    queue_free(q)
+  )
+
+  fun test2() : void =
+  let
+    var q : int = queue_new()
+  in
+  (
+    queue_push(q, 18);
+    queue_push(q, 25);
+    queue_push(q, 16);
+    queue_push(q, 56);
+    printnl_int(queue_pop(q));
+    printnl_int(queue_pop(q));
+
+    queue_push(q, 12);
+    printnl_int(queue_pop(q));
+    printnl_int(queue_pop(q));
+
+    queue_push(q, 24);
+    queue_push(q, 8);
+    queue_push(q, -34);
+    printnl_int(queue_pop(q));
+    printnl_int(queue_pop(q));
+
+    queue_free(q)
+  )
+
+  fun test3() : void =
+  let
+    var q : int = queue_new()
+    var i : int = 0
+  in
+  (
+    while (i < 1000) do (
+      queue_push(q, 3 * i * i + 2 * i - 134);
+      i = i + 1
+    );
+
+    while (queue_size(q)) do (
+      printnl_int(queue_pop(q))
+    );
+
+    queue_free(q)
+  )
+
+
+in
+(
+  test1();
+  test2();
+  test3()
+)

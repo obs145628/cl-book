@@ -119,9 +119,11 @@ impl<'a> Translater<'a> {
 
     fn add_native_defs(&mut self) {
         self.add_standard_fn("putc", ir::FunctionId(257));
-        self.module.create_extern_function(ir::FunctionId(258));
-        self.names
-            .add_function(ir::FunctionId(258), "exit".to_string());
+        self.add_standard_fn("exit", ir::FunctionId(258));
+        self.add_standard_fn("getc", ir::FunctionId(259));
+        self.add_standard_fn("fmemget", ir::FunctionId(260));
+        self.add_standard_fn("fmemset", ir::FunctionId(261));
+        self.add_standard_fn("fmemcpy", ir::FunctionId(262));
     }
 }
 

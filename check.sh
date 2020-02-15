@@ -31,6 +31,7 @@ check_proj libs/irintsm
 check_proj libs/lanexpr
 check_proj libs/oblexer
 check_proj libs/obparser
+check_proj libs/obtests
 check_proj libs/obuid
 
 check_proj apps/cl-lanexpr
