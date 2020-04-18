@@ -1,0 +1,3 @@
+[submodule "extern/chip8-toolchain"]
+	path = extern/chip8-toolchain
+	url = https://github.com/obs145628/chip8-toolchain.git
