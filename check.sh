@@ -33,6 +33,7 @@ check_proj libs/oblexer
 check_proj libs/obparser
 check_proj libs/obtests
 check_proj libs/obuid
+check_proj libs/oc8be
 
 check_proj apps/cl-lanexpr
 check_proj apps/irint3a-utils/
